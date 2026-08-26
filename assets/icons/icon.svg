@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Horizon logo">
+  <defs>
+    <linearGradient id="bg" x1="16" y1="8" x2="112" y2="120" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8b5cf6"/>
+      <stop offset="1" stop-color="#5036d5"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="32" y1="36" x2="100" y2="94" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fff7df"/>
+      <stop offset="1" stop-color="#f5edcf"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="30" fill="#11100f"/>
+  <circle cx="64" cy="64" r="46" fill="url(#bg)"/>
+  <path d="M28 68c11-12 23-18 36-18s25 6 36 18c-11 12-23 18-36 18S39 80 28 68Z" fill="url(#glow)"/>
+  <circle cx="64" cy="68" r="14" fill="#11100f"/>
+  <circle cx="70" cy="61" r="4" fill="#fff"/>
+  <path d="M25 94h78" stroke="#f8b04e" stroke-width="7" stroke-linecap="round"/>
+</svg>

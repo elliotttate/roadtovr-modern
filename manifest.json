@@ -1,0 +1,48 @@
+{
+  "manifest_version": 3,
+  "name": "Road to VR — Horizon",
+  "version": "0.1.0",
+  "description": "A cinematic, modern reading experience for Road to VR.",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://roadtovr.com/*",
+    "https://www.roadtovr.com/*",
+    "http://roadtovr.com/*",
+    "http://www.roadtovr.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://roadtovr.com/*",
+        "https://www.roadtovr.com/*",
+        "http://roadtovr.com/*",
+        "http://www.roadtovr.com/*"
+      ],
+      "css": [
+        "src/styles.css"
+      ],
+      "js": [
+        "src/content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "Road to VR — Horizon",
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "assets/icons/icon-16.png",
+      "32": "assets/icons/icon-32.png",
+      "48": "assets/icons/icon-48.png",
+      "128": "assets/icons/icon-128.png"
+    }
+  },
+  "icons": {
+    "16": "assets/icons/icon-16.png",
+    "32": "assets/icons/icon-32.png",
+    "48": "assets/icons/icon-48.png",
+    "128": "assets/icons/icon-128.png"
+  }
+}
