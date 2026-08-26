@@ -3,6 +3,9 @@
 
   const APP_ID = "rtvrx-app";
   const ACTIVE_CLASS = "rtvrx-active";
+  const BOOTING_CLASS = "rtvrx-booting";
+  const DISABLED_CLASS = "rtvrx-disabled";
+  const PASSTHROUGH_CLASS = "rtvrx-passthrough";
   const DEFAULTS = {
     enabled: true,
     theme: "system",
@@ -532,18 +535,47 @@
     scrollHandler = null;
     app?.remove();
     app = null;
-    document.documentElement.classList.remove(ACTIVE_CLASS);
+    document.documentElement.classList.add(DISABLED_CLASS);
+    document.documentElement.classList.remove(ACTIVE_CLASS, BOOTING_CLASS, PASSTHROUGH_CLASS);
+  }
+
+  function enterBooting() {
+    document.documentElement.classList.add(BOOTING_CLASS);
+    document.documentElement.classList.remove(DISABLED_CLASS, PASSTHROUGH_CLASS);
+  }
+
+  function revealOriginal() {
+    document.documentElement.classList.add(PASSTHROUGH_CLASS);
+    document.documentElement.classList.remove(ACTIVE_CLASS, BOOTING_CLASS, DISABLED_CLASS);
+  }
+
+  function waitForBody() {
+    if (document.body) return Promise.resolve();
+    return new Promise((resolve) => {
+      document.addEventListener("DOMContentLoaded", resolve, { once: true });
+    });
   }
 
   async function build() {
-    if (app || !settings.enabled || !document.body) return;
+    if (app || !settings.enabled) return false;
+    await waitForBody();
+    if (!document.body) {
+      revealOriginal();
+      return false;
+    }
 
     const isArticle = document.body.classList.contains("single-post") || Boolean($(".tdb_single_content, .td-post-content"));
     const posts = extractPosts();
     const data = isArticle ? articleData() : null;
 
-    if (isArticle && !data) return;
-    if (!isArticle && posts.length === 0) return;
+    if (isArticle && !data) {
+      revealOriginal();
+      return false;
+    }
+    if (!isArticle && posts.length === 0) {
+      revealOriginal();
+      return false;
+    }
 
     app = create("div", { id: APP_ID });
     app.addEventListener("click", handleAction);
@@ -553,10 +585,12 @@
 
     document.body.prepend(app);
     document.documentElement.classList.add(ACTIVE_CLASS);
+    document.documentElement.classList.remove(BOOTING_CLASS, DISABLED_CLASS, PASSTHROUGH_CLASS);
     applySettings();
     observeReveals();
     monitorProgress();
     updateSavedButtons();
+    return true;
   }
 
   chrome.storage.onChanged.addListener((changes, area) => {
@@ -565,12 +599,20 @@
       if (changes[key]) settings[key] = changes[key].newValue;
     }
     if (!settings.enabled) teardown();
-    else if (!app) build();
+    else if (!app) {
+      enterBooting();
+      build().catch(revealOriginal);
+    }
     else applySettings();
   });
 
   chrome.storage.sync.get(DEFAULTS).then((stored) => {
     settings = { ...DEFAULTS, ...stored };
-    if (settings.enabled) build();
-  });
+    if (!settings.enabled) {
+      teardown();
+      return;
+    }
+    enterBooting();
+    return build();
+  }).catch(revealOriginal);
 })();

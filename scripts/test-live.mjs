@@ -173,6 +173,55 @@ try {
   await cdp.open();
   await cdp.send("Page.enable");
   await cdp.send("Runtime.enable");
+  await cdp.send("Page.addScriptToEvaluateOnNewDocument", {
+    source: `(() => {
+      const audit = { oldSiteVisible: false, bootLayerSeen: false, samples: 0 };
+      Object.defineProperty(window, "__rtvrFlashAudit", { value: audit });
+
+      const classObserver = new MutationObserver((records) => {
+        if (document.documentElement?.classList.contains("rtvrx-booting") || records.some((record) => record.oldValue?.includes("rtvrx-booting"))) {
+          audit.bootLayerSeen = true;
+        }
+        if (document.documentElement?.classList.contains("rtvrx-active")) classObserver.disconnect();
+      });
+      classObserver.observe(document, {
+        subtree: true,
+        childList: true,
+        attributes: true,
+        attributeFilter: ["class"],
+        attributeOldValue: true,
+      });
+
+      const isVisible = (element) => {
+        if (!element) return false;
+        if (typeof element.checkVisibility === "function") {
+          return element.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true });
+        }
+        let current = element;
+        while (current) {
+          const style = getComputedStyle(current);
+          if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity) === 0) return false;
+          current = current.parentElement;
+        }
+        const rect = element.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0;
+      };
+
+      const sample = () => {
+        audit.samples += 1;
+        const root = document.documentElement;
+        audit.bootLayerSeen ||= root.classList.contains("rtvrx-booting");
+        const legacy = document.querySelector(".td-module-container, .tdb_single_content, .td-post-content");
+        if (legacy && !root.classList.contains("rtvrx-active") && isVisible(legacy)) {
+          audit.oldSiteVisible = true;
+        }
+        if (!root.classList.contains("rtvrx-active") && performance.now() < 30000) {
+          requestAnimationFrame(sample);
+        }
+      };
+      requestAnimationFrame(sample);
+    })();`,
+  });
   await cdp.send("Emulation.setDeviceMetricsOverride", {
     width: 1440,
     height: 1100,
@@ -191,9 +240,14 @@ try {
       sourceModules: document.querySelectorAll(".td-module-container").length,
       cards: document.querySelectorAll(".rtvrx-card").length,
       title: document.querySelector(".rtvrx-home-intro h1")?.textContent || "",
-      firstArticle: document.querySelector(".rtvrx-card h2 a")?.href || ""
+      firstArticle: document.querySelector(".rtvrx-card h2 a")?.href || "",
+      flashAudit: window.__rtvrFlashAudit || null
     }))()`);
-    if (state.active && state.app && state.cards >= 5 && state.firstArticle) return state;
+    if (state.active && state.app && state.cards >= 5 && state.firstArticle) {
+      if (state.flashAudit?.oldSiteVisible) throw new Error(`Legacy site became visible: ${JSON.stringify(state.flashAudit)}`);
+      if (!state.flashAudit?.bootLayerSeen) throw new Error(`Preload layer was not observed: ${JSON.stringify(state.flashAudit)}`);
+      return state;
+    }
     throw new Error(JSON.stringify(state));
   }, { timeout: 35000, label: "modern home page" });
 
@@ -207,9 +261,15 @@ try {
       title: document.querySelector(".rtvrx-article-hero h1")?.textContent || "",
       paragraphs: document.querySelectorAll(".rtvrx-article-content p").length,
       progress: Boolean(document.querySelector(".rtvrx-progress i")),
-      originalHidden: getComputedStyle(document.querySelector("body > :not(#rtvrx-app)"))?.display === "none"
+      originalHidden: getComputedStyle(document.querySelector("body > :not(#rtvrx-app)"))?.display === "none",
+      flashAudit: window.__rtvrFlashAudit || null
     }))()`);
-    return state.active && state.title && state.paragraphs >= 2 && state.progress ? state : null;
+    if (state.active && state.title && state.paragraphs >= 2 && state.progress) {
+      if (state.flashAudit?.oldSiteVisible) throw new Error(`Legacy article became visible: ${JSON.stringify(state.flashAudit)}`);
+      if (!state.flashAudit?.bootLayerSeen) throw new Error(`Article preload layer was not observed: ${JSON.stringify(state.flashAudit)}`);
+      return state;
+    }
+    return null;
   }, { timeout: 35000, label: "modern article page" });
 
   await wait(900);
@@ -230,9 +290,14 @@ try {
       active: document.documentElement.classList.contains("rtvrx-active"),
       cards: document.querySelectorAll(".rtvrx-card").length,
       subnavVisible: getComputedStyle(document.querySelector(".rtvrx-subnav")).display !== "none",
-      horizontalOverflow: document.documentElement.scrollWidth > window.innerWidth + 2
+      horizontalOverflow: document.documentElement.scrollWidth > window.innerWidth + 2,
+      flashAudit: window.__rtvrFlashAudit || null
     }))()`);
-    if (state.active && state.cards >= 5 && state.subnavVisible && !state.horizontalOverflow) return state;
+    if (state.active && state.cards >= 5 && state.subnavVisible && !state.horizontalOverflow) {
+      if (state.flashAudit?.oldSiteVisible) throw new Error(`Legacy mobile site became visible: ${JSON.stringify(state.flashAudit)}`);
+      if (!state.flashAudit?.bootLayerSeen) throw new Error(`Mobile preload layer was not observed: ${JSON.stringify(state.flashAudit)}`);
+      return state;
+    }
     throw new Error(JSON.stringify(state));
   }, { timeout: 35000, label: "responsive mobile home page" });
   await wait(900);

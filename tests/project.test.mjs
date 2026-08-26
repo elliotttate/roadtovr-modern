@@ -15,6 +15,9 @@ test("uses a narrowly scoped Manifest V3 configuration", () => {
   assert.ok(manifest.content_scripts[0].matches.every((pattern) => pattern.includes("roadtovr.com")));
   assert.equal(manifest.background, undefined);
   assert.equal(manifest.content_security_policy, undefined);
+  assert.equal(manifest.content_scripts[0].run_at, "document_start");
+  assert.equal(manifest.content_scripts[0].css[0], "src/preload.css");
+  assert.equal(manifest.content_scripts[0].js[0], "src/bootstrap.js");
 });
 
 test("every manifest resource exists", () => {
@@ -32,12 +35,23 @@ test("every manifest resource exists", () => {
 
 test("content implementation has safe fallback and accessibility hooks", () => {
   const source = read("src/content.js");
-  assert.match(source, /if \(isArticle && !data\) return/);
-  assert.match(source, /if \(!isArticle && posts\.length === 0\) return/);
+  assert.match(source, /if \(isArticle && !data\)/);
+  assert.match(source, /if \(!isArticle && posts\.length === 0\)/);
+  assert.match(source, /function revealOriginal\(\)/);
+  assert.match(source, /classList\.remove\(BOOTING_CLASS, DISABLED_CLASS, PASSTHROUGH_CLASS\)/);
   assert.match(source, /prefers-reduced-motion|IntersectionObserver/);
   assert.match(source, /aria-label/);
   assert.doesNotMatch(source, /\beval\s*\(/);
   assert.doesNotMatch(source, /https?:\/\/[^"']+\.js/);
+});
+
+test("preload layer prevents the legacy page from painting", () => {
+  const preload = read("src/preload.css");
+  const bootstrap = read("src/bootstrap.js");
+  assert.match(preload, /html\.rtvrx-booting body > \*/);
+  assert.match(preload, /visibility: hidden !important/);
+  assert.match(bootstrap, /classList\.add\("rtvrx-booting"\)/);
+  assert.match(bootstrap, /chrome\.storage\.sync\.get/);
 });
 
 test("styles cover responsive, theme, and reduced-motion modes", () => {

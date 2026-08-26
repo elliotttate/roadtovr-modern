@@ -15,6 +15,7 @@ The visual system takes inspiration from the confident hierarchy and energetic p
 ## What it changes
 
 - Rebuilds the home page into a lead-story hero, editorial story grid, latest-news stream, and feature rail.
+- Hides the legacy page before first paint, replacing it with a brief branded transition surface instead of a flash of the old design.
 - Reflows articles into a distraction-free reader with a progress bar, estimated reading time, comfortable line length, and responsive media.
 - Adds light, dark, and system themes.
 - Adds adjustable type size and reading width.
@@ -53,6 +54,8 @@ npm run package
 
 ```text
 manifest.json          Chrome Manifest V3 configuration
+src/bootstrap.js       First-paint guard and preference bootstrap
+src/preload.css        Branded transition layer that hides legacy markup
 src/content.js         Content extraction and page composition
 src/styles.css         Responsive editorial design system
 popup/                 Extension controls

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Road to VR — Horizon",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A cinematic, modern reading experience for Road to VR.",
   "permissions": [
     "storage"
@@ -21,12 +21,14 @@
         "http://www.roadtovr.com/*"
       ],
       "css": [
+        "src/preload.css",
         "src/styles.css"
       ],
       "js": [
+        "src/bootstrap.js",
         "src/content.js"
       ],
-      "run_at": "document_idle"
+      "run_at": "document_start"
     }
   ],
   "action": {
