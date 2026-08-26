@@ -1,6 +1,6 @@
 {
   "name": "roadtovr-horizon",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "private": true,
   "description": "A modern editorial redesign for Road to VR, delivered as a Chrome extension.",
   "scripts": {

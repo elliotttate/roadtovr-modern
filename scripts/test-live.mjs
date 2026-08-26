@@ -264,11 +264,18 @@ try {
       progress: Boolean(document.querySelector(".rtvrx-progress i")),
       originalHidden: getComputedStyle(document.querySelector("body > :not(#rtvrx-app)"))?.display === "none",
       logoLoaded: Boolean(document.querySelector(".rtvrx-brand-image")?.complete && document.querySelector(".rtvrx-brand-image")?.naturalWidth),
+      authorAvatarLoaded: Boolean(document.querySelector(".rtvrx-author-photo img")?.complete && document.querySelector(".rtvrx-author-photo img")?.naturalWidth),
+      commentsPreserved: Boolean(document.querySelector(".rtvrx-comments #comments #disqus_thread")),
+      bodyFontSize: getComputedStyle(document.querySelectorAll(".rtvrx-article-content p")[1] || document.querySelector(".rtvrx-article-content p")).fontSize,
+      bodyLineHeight: getComputedStyle(document.querySelectorAll(".rtvrx-article-content p")[1] || document.querySelector(".rtvrx-article-content p")).lineHeight,
+      bodyFontFamily: getComputedStyle(document.querySelectorAll(".rtvrx-article-content p")[1] || document.querySelector(".rtvrx-article-content p")).fontFamily,
       flashAudit: window.__rtvrFlashAudit || null
     }))()`);
-    if (state.active && state.title && state.paragraphs >= 2 && state.progress && state.logoLoaded) {
+    if (state.active && state.title && state.paragraphs >= 2 && state.progress && state.logoLoaded && state.authorAvatarLoaded && state.commentsPreserved) {
       if (state.flashAudit?.oldSiteVisible) throw new Error(`Legacy article became visible: ${JSON.stringify(state.flashAudit)}`);
       if (!state.flashAudit?.bootLayerSeen) throw new Error(`Article preload layer was not observed: ${JSON.stringify(state.flashAudit)}`);
+      if (Number.parseFloat(state.bodyFontSize) < 21) throw new Error(`Article body text is too small: ${JSON.stringify(state)}`);
+      if (!/Iowan Old Style|Palatino|Georgia/.test(state.bodyFontFamily)) throw new Error(`Legacy article font overrode the reader: ${JSON.stringify(state)}`);
       return state;
     }
     return null;
@@ -279,6 +286,23 @@ try {
   await evaluate(cdp, `(() => { const content = document.querySelector(".rtvrx-article-content"); window.scrollTo(0, Math.max(0, (content ? content.getBoundingClientRect().top + window.scrollY : 1400) - 130)); })()`);
   await wait(500);
   await capture(cdp, "article-reading.png");
+
+  await evaluate(cdp, `document.querySelector(".rtvrx-comments").scrollIntoView({ block: "start" })`);
+  const discussion = await waitFor(async () => {
+    const state = await evaluate(cdp, `(() => {
+      const section = document.querySelector(".rtvrx-comments");
+      const fallback = section?.querySelector("[data-rtvr-comment-fallback]");
+      return {
+        sectionVisible: Boolean(section && section.getBoundingClientRect().height > 0),
+        threadPreserved: Boolean(section?.querySelector("#comments #disqus_thread")),
+        frameLoaded: Boolean(section?.querySelector('iframe[src*="disqus"]')),
+        fallbackVisible: Boolean(fallback && !fallback.hidden && getComputedStyle(fallback).display !== "none")
+      };
+    })()`);
+    return state.sectionVisible && state.threadPreserved && (state.frameLoaded || state.fallbackVisible) ? state : null;
+  }, { timeout: 25000, label: "preserved Disqus discussion" });
+  await wait(700);
+  await capture(cdp, "article-comments.png");
 
   await evaluate(cdp, `document.querySelector(".rtvrx-header .rtvrx-brand").click()`);
   const articleToHome = await waitFor(async () => {
@@ -327,6 +351,34 @@ try {
   await wait(900);
   await capture(cdp, "mobile-home.png");
 
+  await cdp.send("Page.navigate", { url: home.firstArticle });
+  const mobileArticle = await waitFor(async () => {
+    const state = await evaluate(cdp, `(() => {
+      const paragraph = document.querySelectorAll(".rtvrx-article-content p")[1] || document.querySelector(".rtvrx-article-content p");
+      const typography = paragraph ? getComputedStyle(paragraph) : null;
+      return {
+        active: document.documentElement.classList.contains("rtvrx-active"),
+        paragraphs: document.querySelectorAll(".rtvrx-article-content p").length,
+        horizontalOverflow: document.documentElement.scrollWidth > window.innerWidth + 2,
+        bodyFontSize: typography?.fontSize || "",
+        bodyLineHeight: typography?.lineHeight || "",
+        bodyFontFamily: typography?.fontFamily || "",
+        authorAvatarLoaded: Boolean(document.querySelector(".rtvrx-author-photo img")?.complete && document.querySelector(".rtvrx-author-photo img")?.naturalWidth),
+        commentsPreserved: Boolean(document.querySelector(".rtvrx-comments #comments #disqus_thread")),
+        flashAudit: window.__rtvrFlashAudit || null
+      };
+    })()`);
+    if (state.active && state.paragraphs >= 2 && !state.horizontalOverflow && state.authorAvatarLoaded && state.commentsPreserved) {
+      if (Number.parseFloat(state.bodyFontSize) < 21) throw new Error(`Mobile article body text is too small: ${JSON.stringify(state)}`);
+      if (!/Iowan Old Style|Palatino|Georgia/.test(state.bodyFontFamily)) throw new Error(`Legacy mobile article font overrode the reader: ${JSON.stringify(state)}`);
+      if (state.flashAudit?.oldSiteVisible) throw new Error(`Legacy mobile article became visible: ${JSON.stringify(state.flashAudit)}`);
+      return state;
+    }
+    throw new Error(JSON.stringify(state));
+  }, { timeout: 35000, label: "readable mobile article typography" });
+  await wait(900);
+  await capture(cdp, "mobile-article-reading.png");
+
   const logoUrl = await evaluate(cdp, `document.querySelector(".rtvrx-brand-image").src`);
   const extensionBase = logoUrl.slice(0, logoUrl.indexOf("/assets/"));
   await cdp.send("Emulation.setDeviceMetricsOverride", {
@@ -354,8 +406,10 @@ try {
     testedAt: new Date().toISOString(),
     home,
     article,
+    discussion,
     articleToHome,
     mobile,
+    mobileArticle,
     popup,
   };
   writeFileSync(path.join(artifactDirectory, "live-test.json"), `${JSON.stringify(report, null, 2)}\n`);

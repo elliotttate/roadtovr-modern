@@ -777,6 +777,7 @@ html.rtvrx-active body > :not(#rtvrx-app) {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
+  align-items: center;
   gap: 7px 20px;
   margin-top: 30px;
   color: var(--rtvrx-muted);
@@ -789,6 +790,47 @@ html.rtvrx-active body > :not(#rtvrx-app) {
 #rtvrx-app .rtvrx-byline a,
 #rtvrx-app .rtvrx-byline strong {
   color: var(--rtvrx-ink);
+}
+
+#rtvrx-app .rtvrx-author {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+#rtvrx-app .rtvrx-author-photo {
+  display: block;
+  width: 52px;
+  height: 52px;
+  overflow: hidden;
+  border: 2px solid var(--rtvrx-surface);
+  border-radius: 50%;
+  background: var(--rtvrx-surface-2);
+  box-shadow: 0 0 0 1px var(--rtvrx-line);
+}
+
+#rtvrx-app .rtvrx-author-photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+#rtvrx-app .rtvrx-author-copy {
+  display: grid;
+  gap: 2px;
+  text-align: left;
+}
+
+#rtvrx-app .rtvrx-author-label {
+  color: var(--rtvrx-muted);
+  font-size: 8px;
+  letter-spacing: .16em;
+}
+
+#rtvrx-app .rtvrx-author-name {
+  font-size: 12px;
+  text-decoration: none;
 }
 
 #rtvrx-app .rtvrx-byline time::before,
@@ -833,9 +875,27 @@ html.rtvrx-active body > :not(#rtvrx-app) {
 #rtvrx-app .rtvrx-article-content {
   width: 100%;
   color: var(--rtvrx-ink);
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: calc(clamp(19px, 1.45vw, 22px) * var(--rtvrx-font-scale));
-  line-height: 1.72;
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  font-size: calc(clamp(21px, 1.55vw, 24px) * var(--rtvrx-font-scale));
+  font-kerning: normal;
+  letter-spacing: .003em;
+  line-height: 1.68;
+  text-rendering: optimizeLegibility;
+}
+
+#rtvrx-app .rtvrx-article-content :is(p, ul, ol) {
+  font-family: inherit !important;
+  font-size: 1em !important;
+  letter-spacing: inherit !important;
+  line-height: inherit !important;
+}
+
+#rtvrx-app .rtvrx-article-content :is(p, li) span,
+#rtvrx-app .rtvrx-article-content li {
+  font-family: inherit !important;
+  font-size: inherit !important;
+  letter-spacing: inherit !important;
+  line-height: inherit !important;
 }
 
 #rtvrx-app .rtvrx-article-content > :first-child {
@@ -843,8 +903,8 @@ html.rtvrx-active body > :not(#rtvrx-app) {
 }
 
 #rtvrx-app .rtvrx-article-content > p:first-of-type {
-  font-size: 1.14em;
-  line-height: 1.62;
+  font-size: 1.14em !important;
+  line-height: 1.62 !important;
 }
 
 #rtvrx-app .rtvrx-article-content p,
@@ -943,6 +1003,59 @@ html.rtvrx-active body > :not(#rtvrx-app) {
 #rtvrx-app .rtvrx-article-content td {
   padding: 10px 12px;
   border: 1px solid var(--rtvrx-line);
+}
+
+#rtvrx-app .rtvrx-comments {
+  width: min(100% - 48px, 960px);
+  padding-block: clamp(72px, 9vw, 128px);
+  border-top: 1px solid var(--rtvrx-line);
+}
+
+#rtvrx-app .rtvrx-comments-heading {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px 28px;
+  align-items: end;
+  margin-bottom: 38px;
+}
+
+#rtvrx-app .rtvrx-comments-heading span {
+  grid-column: 1 / -1;
+  color: var(--rtvrx-accent-2);
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+}
+
+#rtvrx-app .rtvrx-comments-heading h2 {
+  margin: 0;
+  color: var(--rtvrx-ink) !important;
+  font-size: clamp(38px, 5vw, 68px);
+  font-weight: 880;
+  letter-spacing: -.06em;
+  line-height: .98;
+}
+
+#rtvrx-app .rtvrx-comments-heading p {
+  max-width: 280px;
+  margin: 0;
+  color: var(--rtvrx-muted);
+  font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+#rtvrx-app .rtvrx-comments-thread {
+  min-height: 220px;
+  color: var(--rtvrx-ink);
+  font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+#rtvrx-app .rtvrx-comments-thread #disqus_thread,
+#rtvrx-app .rtvrx-comments-thread iframe[src*="disqus"] {
+  display: block;
+  width: 100% !important;
 }
 
 #rtvrx-app .rtvrx-article-tools {
@@ -1222,6 +1335,24 @@ html.rtvrx-active body > :not(#rtvrx-app) {
 
   #rtvrx-app .rtvrx-byline {
     justify-content: flex-start;
+    gap: 16px 24px;
+  }
+
+  #rtvrx-app .rtvrx-author {
+    flex-basis: 100%;
+  }
+
+  #rtvrx-app .rtvrx-byline time::before,
+  #rtvrx-app .rtvrx-byline > span:last-child::before {
+    display: none;
+  }
+
+  #rtvrx-app .rtvrx-comments-heading {
+    grid-template-columns: 1fr;
+  }
+
+  #rtvrx-app .rtvrx-comments-heading p {
+    max-width: 100%;
   }
 
   #rtvrx-app .rtvrx-article-layout {

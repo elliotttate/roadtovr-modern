@@ -28,6 +28,8 @@
   let settings = { ...DEFAULTS };
   let app = null;
   let scrollHandler = null;
+  let preservedComments = null;
+  let commentsPlaceholder = null;
 
   const $ = (selector, scope = document) => scope.querySelector(selector);
   const $$ = (selector, scope = document) => [...scope.querySelectorAll(selector)];
@@ -346,6 +348,7 @@
 
     const title = cleanText($(".tdb-title-text, h1.entry-title, article h1")?.textContent || document.title.split("|")[0]);
     const authorNode = $(".tdb-author-name, [rel='author'], .author a");
+    const authorImageNode = $(".tdb_single_author .tdb-author-photo img, .tdb-author-photo img, .author-box img.avatar");
     const dateNode = $("article time, .tdb_single_date time, time.entry-date");
     const categoryNode = $(".tdb-entry-category a, .td-post-category a, .entry-category a, article [rel='category tag']");
     const heroImage = $(".tdb_single_featured_image img, article .entry-thumb, .td-post-featured-image img");
@@ -357,6 +360,8 @@
       title,
       author: cleanText(authorNode?.textContent || "Road to VR"),
       authorHref: absoluteUrl(authorNode?.href || ""),
+      authorImage: absoluteUrl(authorImageNode?.src || authorImageNode?.dataset?.src || ""),
+      authorImageSrcset: authorImageNode?.srcset || "",
       date: cleanText(dateNode?.textContent || ""),
       datetime: dateNode?.getAttribute("datetime") || "",
       category: cleanText(categoryNode?.textContent || categoryFor(title)),
@@ -369,15 +374,75 @@
     };
   }
 
-  function makeArticle(data, relatedPosts) {
+  function preserveDiscussion() {
+    const comments = $("#comments");
+    if (!comments || !$("#disqus_thread", comments)) return null;
+
+    commentsPlaceholder = document.createComment("rtvrx-comments-placeholder");
+    comments.before(commentsPlaceholder);
+    preservedComments = comments;
+    comments.classList.add("rtvrx-comments-thread");
+
+    return create("section", {
+      id: "rtvrx-discussion",
+      className: "rtvrx-comments rtvrx-shell",
+      "aria-labelledby": "rtvrx-comments-title",
+    }, [
+      create("header", { className: "rtvrx-comments-heading" }, [
+        create("span", { text: "Community" }),
+        create("h2", { id: "rtvrx-comments-title", text: "Join the discussion" }),
+        create("p", { text: "Comments are provided by Road to VR through Disqus." }),
+      ]),
+      comments,
+    ]);
+  }
+
+  function restoreDiscussion() {
+    if (preservedComments && commentsPlaceholder?.isConnected) {
+      preservedComments.classList.remove("rtvrx-comments-thread");
+      commentsPlaceholder.replaceWith(preservedComments);
+    }
+    preservedComments = null;
+    commentsPlaceholder = null;
+  }
+
+  function makeAuthor(data) {
+    const avatar = data.authorImage ? create("img", {
+      src: data.authorImage,
+      srcset: data.authorImageSrcset || null,
+      sizes: "52px",
+      alt: data.author,
+      width: "52",
+      height: "52",
+      loading: "eager",
+      decoding: "async",
+    }) : null;
+    const photo = avatar
+      ? data.authorHref
+        ? makeLink("rtvrx-author-photo", data.authorHref, avatar, `More articles by ${data.author}`)
+        : create("span", { className: "rtvrx-author-photo" }, avatar)
+      : null;
+    const name = data.authorHref
+      ? makeLink("rtvrx-author-name", data.authorHref, data.author)
+      : create("strong", { className: "rtvrx-author-name", text: data.author });
+
+    return create("span", { className: "rtvrx-author" }, [
+      photo,
+      create("span", { className: "rtvrx-author-copy" }, [
+        create("span", { className: "rtvrx-author-label", text: "By" }),
+        name,
+      ]),
+    ]);
+  }
+
+  function makeArticle(data, relatedPosts, discussion) {
     const main = create("main", { className: "rtvrx-article" });
     const header = create("header", { className: "rtvrx-article-hero rtvrx-shell" }, [
       makeLink("rtvrx-kicker", data.categoryHref || "/", data.category),
       create("h1", { text: data.title }),
       create("p", { className: "rtvrx-dek", text: data.description }),
       create("div", { className: "rtvrx-byline" }, [
-        create("span", { text: "By " }),
-        data.authorHref ? makeLink("", data.authorHref, data.author) : create("strong", { text: data.author }),
+        makeAuthor(data),
         data.date ? create("time", { datetime: data.datetime || null, text: data.date }) : null,
         create("span", { text: `${data.minutes} min read` }),
       ]),
@@ -417,7 +482,7 @@
       ),
     ]) : null;
 
-    main.append(header, figure, body, related);
+    main.append(header, figure, body, discussion, related);
     return main;
   }
 
@@ -533,6 +598,7 @@
   function teardown() {
     if (scrollHandler) window.removeEventListener("scroll", scrollHandler);
     scrollHandler = null;
+    restoreDiscussion();
     app?.remove();
     app = null;
     document.documentElement.classList.add(DISABLED_CLASS);
@@ -585,10 +651,11 @@
       return false;
     }
 
+    const discussion = isArticle ? preserveDiscussion() : null;
     app = create("div", { id: APP_ID });
     app.addEventListener("click", handleAction);
     app.append(makeHeader(isArticle));
-    app.append(isArticle ? makeArticle(data, posts) : buildHome(posts));
+    app.append(isArticle ? makeArticle(data, posts, discussion) : buildHome(posts));
     app.append(makeFooter());
 
     document.body.prepend(app);

@@ -43,6 +43,11 @@ test("content implementation has safe fallback and accessibility hooks", () => {
   assert.match(source, /document\.readyState !== "loading"/);
   assert.match(source, /await waitForSourceMarkup\(\)/);
   assert.match(source, /makeLink\("rtvrx-brand", "\/"/);
+  assert.match(source, /\.tdb_single_author \.tdb-author-photo img/);
+  assert.match(source, /className: "rtvrx-author-photo"/);
+  assert.match(source, /function preserveDiscussion\(\)/);
+  assert.match(source, /#disqus_thread/);
+  assert.match(source, /function restoreDiscussion\(\)/);
   assert.match(source, /classList\.remove\(BOOTING_CLASS, DISABLED_CLASS, PASSTHROUGH_CLASS\)/);
   assert.match(source, /prefers-reduced-motion|IntersectionObserver/);
   assert.match(source, /aria-label/);
@@ -76,4 +81,9 @@ test("styles cover responsive, theme, and reduced-motion modes", () => {
   assert.match(styles, /prefers-reduced-motion: reduce/);
   assert.match(styles, /@media \(max-width: 800px\)/);
   assert.match(styles, /--rtvrx-reading-width/);
+  assert.match(styles, /clamp\(21px, 1\.55vw, 24px\)/);
+  assert.match(styles, /"Iowan Old Style"/);
+  assert.match(styles, /text-rendering: optimizeLegibility/);
+  assert.match(styles, /font-family: inherit !important/);
+  assert.match(styles, /font-size: 1em !important/);
 });

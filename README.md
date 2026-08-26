@@ -17,7 +17,9 @@ The visual system takes inspiration from the confident hierarchy and energetic p
 - Rebuilds the home page into a lead-story hero, editorial story grid, latest-news stream, and feature rail.
 - Hides the legacy page before first paint, replacing it with a brief branded transition surface instead of a flash of the old design.
 - Uses the supplied modern Road to VR identity throughout the site, popup, preload screen, and toolbar icon.
-- Reflows articles into a distraction-free reader with a progress bar, estimated reading time, comfortable line length, and responsive media.
+- Reflows articles into a distraction-free reader with larger editorial typography, a progress bar, estimated reading time, comfortable line length, and responsive media.
+- Shows each article author's profile photo and links the byline back to their Road to VR profile.
+- Keeps the original Road to VR Disqus discussion available beneath every article.
 - Adds light, dark, and system themes.
 - Adds adjustable type size and reading width.
 - Adds a private, on-device reading list.
