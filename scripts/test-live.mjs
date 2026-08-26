@@ -280,6 +280,27 @@ try {
   await wait(500);
   await capture(cdp, "article-reading.png");
 
+  await evaluate(cdp, `document.querySelector(".rtvrx-header .rtvrx-brand").click()`);
+  const articleToHome = await waitFor(async () => {
+    const state = await evaluate(cdp, `(() => ({
+      url: location.href,
+      active: document.documentElement.classList.contains("rtvrx-active"),
+      app: Boolean(document.querySelector("#rtvrx-app")),
+      cards: document.querySelectorAll(".rtvrx-card").length,
+      title: document.querySelector(".rtvrx-home-intro h1")?.textContent || "",
+      logoLoaded: Boolean(document.querySelector(".rtvrx-brand-image")?.complete && document.querySelector(".rtvrx-brand-image")?.naturalWidth),
+      flashAudit: window.__rtvrFlashAudit || null
+    }))()`);
+    if (state.active && state.app && state.cards >= 5 && state.title && state.logoLoaded) {
+      if (state.flashAudit?.oldSiteVisible) throw new Error(`Legacy site became visible after clicking the article logo: ${JSON.stringify(state.flashAudit)}`);
+      if (!state.flashAudit?.bootLayerSeen) throw new Error(`Preload layer was not observed after clicking the article logo: ${JSON.stringify(state.flashAudit)}`);
+      return state;
+    }
+    throw new Error(JSON.stringify(state));
+  }, { timeout: 35000, label: "article logo navigation to modern home page" });
+  await wait(900);
+  await capture(cdp, "article-logo-home.png");
+
   await cdp.send("Emulation.setDeviceMetricsOverride", {
     width: 390,
     height: 844,
@@ -333,6 +354,7 @@ try {
     testedAt: new Date().toISOString(),
     home,
     article,
+    articleToHome,
     mobile,
     popup,
   };

@@ -132,7 +132,7 @@
   }
 
   function makeBrand() {
-    return makeLink("rtvrx-brand", "https://roadtovr.com/", [
+    return makeLink("rtvrx-brand", "/", [
       create("img", {
         className: "rtvrx-brand-image",
         src: BRAND_LOGO_URL,
@@ -556,9 +556,17 @@
     });
   }
 
+  async function waitForSourceMarkup() {
+    await waitForBody();
+    if (document.readyState !== "loading") return;
+    await new Promise((resolve) => {
+      document.addEventListener("DOMContentLoaded", resolve, { once: true });
+    });
+  }
+
   async function build() {
     if (app || !settings.enabled) return false;
-    await waitForBody();
+    await waitForSourceMarkup();
     if (!document.body) {
       revealOriginal();
       return false;

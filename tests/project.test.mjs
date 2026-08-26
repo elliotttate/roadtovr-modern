@@ -39,6 +39,10 @@ test("content implementation has safe fallback and accessibility hooks", () => {
   assert.match(source, /if \(isArticle && !data\)/);
   assert.match(source, /if \(!isArticle && posts\.length === 0\)/);
   assert.match(source, /function revealOriginal\(\)/);
+  assert.match(source, /async function waitForSourceMarkup\(\)/);
+  assert.match(source, /document\.readyState !== "loading"/);
+  assert.match(source, /await waitForSourceMarkup\(\)/);
+  assert.match(source, /makeLink\("rtvrx-brand", "\/"/);
   assert.match(source, /classList\.remove\(BOOTING_CLASS, DISABLED_CLASS, PASSTHROUGH_CLASS\)/);
   assert.match(source, /prefers-reduced-motion|IntersectionObserver/);
   assert.match(source, /aria-label/);

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Road to VR — Horizon",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "A cinematic, modern reading experience for Road to VR.",
   "permissions": [
     "storage"
