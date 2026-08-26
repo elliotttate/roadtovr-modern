@@ -26,6 +26,7 @@ test("every manifest resource exists", () => {
     manifest.action.default_popup,
     ...Object.values(manifest.action.default_icon),
     ...Object.values(manifest.icons),
+    ...manifest.web_accessible_resources.flatMap((entry) => entry.resources),
   ];
 
   for (const relativePath of new Set(referenced)) {
@@ -50,8 +51,18 @@ test("preload layer prevents the legacy page from painting", () => {
   const bootstrap = read("src/bootstrap.js");
   assert.match(preload, /html\.rtvrx-booting body > \*/);
   assert.match(preload, /visibility: hidden !important/);
+  assert.match(preload, /assets\/brand\/road-to-vr-logo\.png/);
   assert.match(bootstrap, /classList\.add\("rtvrx-booting"\)/);
   assert.match(bootstrap, /chrome\.storage\.sync\.get/);
+});
+
+test("new Road to VR identity is wired into every extension surface", () => {
+  const content = read("src/content.js");
+  const popup = read("popup/popup.html");
+  assert.match(content, /chrome\.runtime\.getURL\("assets\/brand\/road-to-vr-logo\.png"\)/);
+  assert.match(content, /className: "rtvrx-brand-image"/);
+  assert.match(popup, /assets\/brand\/road-to-vr-logo\.png/);
+  assert.ok(manifest.web_accessible_resources[0].resources.includes("assets/brand/road-to-vr-logo.png"));
 });
 
 test("styles cover responsive, theme, and reduced-motion modes", () => {

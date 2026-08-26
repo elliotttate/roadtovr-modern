@@ -241,9 +241,10 @@ try {
       cards: document.querySelectorAll(".rtvrx-card").length,
       title: document.querySelector(".rtvrx-home-intro h1")?.textContent || "",
       firstArticle: document.querySelector(".rtvrx-card h2 a")?.href || "",
+      logoLoaded: Boolean(document.querySelector(".rtvrx-brand-image")?.complete && document.querySelector(".rtvrx-brand-image")?.naturalWidth),
       flashAudit: window.__rtvrFlashAudit || null
     }))()`);
-    if (state.active && state.app && state.cards >= 5 && state.firstArticle) {
+    if (state.active && state.app && state.cards >= 5 && state.firstArticle && state.logoLoaded) {
       if (state.flashAudit?.oldSiteVisible) throw new Error(`Legacy site became visible: ${JSON.stringify(state.flashAudit)}`);
       if (!state.flashAudit?.bootLayerSeen) throw new Error(`Preload layer was not observed: ${JSON.stringify(state.flashAudit)}`);
       return state;
@@ -262,9 +263,10 @@ try {
       paragraphs: document.querySelectorAll(".rtvrx-article-content p").length,
       progress: Boolean(document.querySelector(".rtvrx-progress i")),
       originalHidden: getComputedStyle(document.querySelector("body > :not(#rtvrx-app)"))?.display === "none",
+      logoLoaded: Boolean(document.querySelector(".rtvrx-brand-image")?.complete && document.querySelector(".rtvrx-brand-image")?.naturalWidth),
       flashAudit: window.__rtvrFlashAudit || null
     }))()`);
-    if (state.active && state.title && state.paragraphs >= 2 && state.progress) {
+    if (state.active && state.title && state.paragraphs >= 2 && state.progress && state.logoLoaded) {
       if (state.flashAudit?.oldSiteVisible) throw new Error(`Legacy article became visible: ${JSON.stringify(state.flashAudit)}`);
       if (!state.flashAudit?.bootLayerSeen) throw new Error(`Article preload layer was not observed: ${JSON.stringify(state.flashAudit)}`);
       return state;
@@ -291,9 +293,10 @@ try {
       cards: document.querySelectorAll(".rtvrx-card").length,
       subnavVisible: getComputedStyle(document.querySelector(".rtvrx-subnav")).display !== "none",
       horizontalOverflow: document.documentElement.scrollWidth > window.innerWidth + 2,
+      logoLoaded: Boolean(document.querySelector(".rtvrx-brand-image")?.complete && document.querySelector(".rtvrx-brand-image")?.naturalWidth),
       flashAudit: window.__rtvrFlashAudit || null
     }))()`);
-    if (state.active && state.cards >= 5 && state.subnavVisible && !state.horizontalOverflow) {
+    if (state.active && state.cards >= 5 && state.subnavVisible && !state.horizontalOverflow && state.logoLoaded) {
       if (state.flashAudit?.oldSiteVisible) throw new Error(`Legacy mobile site became visible: ${JSON.stringify(state.flashAudit)}`);
       if (!state.flashAudit?.bootLayerSeen) throw new Error(`Mobile preload layer was not observed: ${JSON.stringify(state.flashAudit)}`);
       return state;
@@ -303,6 +306,27 @@ try {
   await wait(900);
   await capture(cdp, "mobile-home.png");
 
+  const logoUrl = await evaluate(cdp, `document.querySelector(".rtvrx-brand-image").src`);
+  const extensionBase = logoUrl.slice(0, logoUrl.indexOf("/assets/"));
+  await cdp.send("Emulation.setDeviceMetricsOverride", {
+    width: 390,
+    height: 600,
+    deviceScaleFactor: 2,
+    mobile: false,
+  });
+  await cdp.send("Page.navigate", { url: `${extensionBase}/popup/popup.html` });
+  const popup = await waitFor(async () => {
+    const state = await evaluate(cdp, `(() => ({
+      title: document.title,
+      logoLoaded: Boolean(document.querySelector(".brand img")?.complete && document.querySelector(".brand img")?.naturalWidth),
+      controls: document.querySelectorAll("input, select, button").length,
+      enabled: document.querySelector("#enabled")?.checked
+    }))()`);
+    return state.title && state.logoLoaded && state.controls >= 5 ? state : null;
+  }, { timeout: 15000, label: "extension popup with new brand" });
+  await wait(400);
+  await capture(cdp, "popup.png");
+
   const report = {
     chrome,
     extension: "Road to VR — Horizon",
@@ -310,6 +334,7 @@ try {
     home,
     article,
     mobile,
+    popup,
   };
   writeFileSync(path.join(artifactDirectory, "live-test.json"), `${JSON.stringify(report, null, 2)}\n`);
   console.log(JSON.stringify(report, null, 2));

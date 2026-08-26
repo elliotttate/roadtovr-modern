@@ -6,6 +6,7 @@
   const BOOTING_CLASS = "rtvrx-booting";
   const DISABLED_CLASS = "rtvrx-disabled";
   const PASSTHROUGH_CLASS = "rtvrx-passthrough";
+  const BRAND_LOGO_URL = chrome.runtime.getURL("assets/brand/road-to-vr-logo.png");
   const DEFAULTS = {
     enabled: true,
     theme: "system",
@@ -132,14 +133,13 @@
 
   function makeBrand() {
     return makeLink("rtvrx-brand", "https://roadtovr.com/", [
-      create("span", { className: "rtvrx-brand-eye", "aria-hidden": "true" }, [
-        create("i"),
-      ]),
-      create("span", { className: "rtvrx-brand-word" }, [
-        create("b", { text: "ROAD TO" }),
-        create("strong", { text: "VR" }),
-      ]),
-      create("span", { className: "rtvrx-brand-edition", text: "HORIZON" }),
+      create("img", {
+        className: "rtvrx-brand-image",
+        src: BRAND_LOGO_URL,
+        alt: "Road to VR",
+        width: "926",
+        height: "300",
+      }),
     ], "Road to VR home");
   }
 
