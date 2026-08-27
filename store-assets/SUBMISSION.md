@@ -48,6 +48,30 @@ Road to VR — Horizon is an unofficial reader extension. It is not affiliated w
 
 ## Privacy tab
 
+### Resolve “Unable to publish” warnings
+
+Paste these exact values into the corresponding fields, then select the data-use certification checkbox and click **Save Draft**.
+
+**Single purpose description**
+
+Transform Road to VR pages into a modern, accessible reader while preserving the publisher's original articles, navigation, images, author details, and comments.
+
+**Host permission justification**
+
+Host access is required only on roadtovr.com and www.roadtovr.com so the extension can read and restyle the currently open Road to VR page, preserve its links and discussion, and request featured-image metadata from Road to VR's same-origin WordPress endpoint. Both HTTP and HTTPS are included because Road to VR URLs may be opened with either scheme before redirecting. The extension does not access other websites.
+
+**Remote code justification**
+
+The extension does not use remote code. All JavaScript and CSS are included in the extension package. It does not download, evaluate, or execute remote JavaScript or WebAssembly; its same-origin WordPress request retrieves article metadata only.
+
+**Storage justification**
+
+Chrome storage saves the user's enabled state, theme, text size, and reading width. Local extension storage also keeps the optional saved-story list and a small cache of Road to VR featured-image URLs. No stored data is sent to the developer.
+
+**Data usage certification**
+
+Select the checkbox certifying that the extension's data usage complies with the Chrome Web Store Developer Program Policies, including the Limited Use requirements.
+
 ### Single purpose
 
 Replace the presentation of roadtovr.com with a modern, accessible reader while preserving the publisher's original articles, navigation, images, author details, and comments.
