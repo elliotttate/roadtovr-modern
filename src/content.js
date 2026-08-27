@@ -668,7 +668,6 @@
       makeSaveButton(articlePost),
       create("button", { type: "button", "data-action": "font-down", "aria-label": "Decrease text size", text: "A−" }),
       create("button", { type: "button", "data-action": "font-up", "aria-label": "Increase text size", text: "A+" }),
-      create("button", { type: "button", "data-action": "top", "aria-label": "Back to top", text: "↑" }),
     ]);
 
     const body = create("div", { className: "rtvrx-article-layout rtvrx-shell" }, [
@@ -702,6 +701,20 @@
           makeLink("", "https://roadtovr.com/feed/", "RSS"),
         ]),
       ]),
+    ]);
+  }
+
+  function makeBackToTop() {
+    return create("button", {
+      className: "rtvrx-back-to-top",
+      type: "button",
+      tabindex: "-1",
+      "data-action": "top",
+      "aria-label": "Return to the top of the page",
+      "aria-hidden": "true",
+    }, [
+      create("span", { text: "To the top" }),
+      create("i", { "aria-hidden": "true", text: "↑" }),
     ]);
   }
 
@@ -787,7 +800,10 @@
       const fontScale = Math.min(1.25, Math.max(0.85, Number((settings.fontScale + delta).toFixed(2))));
       chrome.storage.sync.set({ fontScale });
     }
-    if (action === "top") window.scrollTo({ top: 0, behavior: "smooth" });
+    if (action === "top") {
+      const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+      window.scrollTo({ top: 0, behavior });
+    }
   }
 
   function handleAppKeydown(event) {
@@ -830,11 +846,18 @@
 
   function monitorProgress() {
     const bar = $(".rtvrx-progress i", app);
-    if (!bar) return;
+    const backToTop = $(".rtvrx-back-to-top", app);
+    if (!bar && !backToTop) return;
     scrollHandler = () => {
       const max = document.documentElement.scrollHeight - window.innerHeight;
       const progress = max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0;
-      bar.style.transform = `scaleX(${progress})`;
+      if (bar) bar.style.transform = `scaleX(${progress})`;
+      if (backToTop) {
+        const isVisible = max > 0 && window.scrollY > Math.max(520, window.innerHeight * .72);
+        backToTop.classList.toggle("is-visible", isVisible);
+        backToTop.setAttribute("aria-hidden", String(!isVisible));
+        backToTop.tabIndex = isVisible ? 0 : -1;
+      }
     };
     window.addEventListener("scroll", scrollHandler, { passive: true });
     scrollHandler();
@@ -903,6 +926,7 @@
     app.append(makeHeader(isArticle));
     app.append(isArticle ? makeArticle(data, posts, discussion) : buildHome(posts));
     app.append(makeFooter());
+    app.append(makeBackToTop());
 
     document.body.prepend(app);
     document.documentElement.classList.add(ACTIVE_CLASS);

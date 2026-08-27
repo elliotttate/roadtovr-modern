@@ -261,10 +261,11 @@ try {
       primaryNavLinks: document.querySelectorAll(".rtvrx-nav a").length,
       exploreLinks: document.querySelectorAll(".rtvrx-explore-grid .rtvrx-explore-link").length,
       exploreTriggerVisible: Boolean(document.querySelector("[data-action='explore']")?.getBoundingClientRect().width),
+      backToTopHidden: document.querySelector(".rtvrx-back-to-top")?.getAttribute("aria-hidden") === "true" && !document.querySelector(".rtvrx-back-to-top")?.classList.contains("is-visible"),
       logoLoaded: Boolean(document.querySelector(".rtvrx-brand-image")?.complete && document.querySelector(".rtvrx-brand-image")?.naturalWidth),
       flashAudit: window.__rtvrFlashAudit || null
     }))()`);
-    if (state.active && state.app && state.cards >= 5 && state.unresolvedImageCards === 0 && state.firstArticle && state.logoLoaded && state.primaryNavLinks === 5 && state.exploreLinks === 11 && state.exploreTriggerVisible) {
+    if (state.active && state.app && state.cards >= 5 && state.unresolvedImageCards === 0 && state.firstArticle && state.logoLoaded && state.primaryNavLinks === 5 && state.exploreLinks === 11 && state.exploreTriggerVisible && state.backToTopHidden) {
       if (state.flashAudit?.oldSiteVisible) throw new Error(`Legacy site became visible: ${JSON.stringify(state.flashAudit)}`);
       if (!state.flashAudit?.bootLayerSeen) throw new Error(`Preload layer was not observed: ${JSON.stringify(state.flashAudit)}`);
       return state;
@@ -348,6 +349,33 @@ try {
   await evaluate(cdp, `document.querySelector(".rtvrx-latest").scrollIntoView({ block: "start" })`);
   await wait(600);
   await capture(cdp, "home-latest.png");
+  const desktopBackToTop = await waitFor(async () => {
+    const state = await evaluate(cdp, `(() => {
+      const button = document.querySelector(".rtvrx-back-to-top");
+      const rect = button?.getBoundingClientRect();
+      return {
+        scrollY: window.scrollY,
+        visible: button?.classList.contains("is-visible") || false,
+        ariaHidden: button?.getAttribute("aria-hidden") || "",
+        tabIndex: button?.tabIndex,
+        text: button?.textContent?.replace(/\\s+/g, " ").trim() || "",
+        position: button ? getComputedStyle(button).position : "",
+        insideViewport: Boolean(rect && rect.right <= window.innerWidth + 1 && rect.bottom <= window.innerHeight + 1),
+      };
+    })()`);
+    return state.scrollY > 520 && state.visible && state.ariaHidden === "false" && state.tabIndex === 0 && state.text.includes("To the top") && state.position === "fixed" && state.insideViewport ? state : null;
+  }, { timeout: 5000, label: "desktop floating To the top control" });
+  await capture(cdp, "home-back-to-top.png");
+  await evaluate(cdp, `document.querySelector(".rtvrx-back-to-top").click()`);
+  const desktopReturnToTop = await waitFor(async () => {
+    const state = await evaluate(cdp, `(() => ({
+      scrollY: window.scrollY,
+      visible: document.querySelector(".rtvrx-back-to-top")?.classList.contains("is-visible") || false,
+      ariaHidden: document.querySelector(".rtvrx-back-to-top")?.getAttribute("aria-hidden") || "",
+      tabIndex: document.querySelector(".rtvrx-back-to-top")?.tabIndex,
+    }))()`);
+    return state.scrollY <= 2 && !state.visible && state.ariaHidden === "true" && state.tabIndex === -1 ? state : null;
+  }, { timeout: 7000, label: "desktop return to page top" });
   let restoredArtwork = [];
   if (home.metadataImageCards) {
     await evaluate(cdp, `document.querySelector('.rtvrx-card-media[data-image-state="metadata"], .rtvrx-card-media[data-image-state="cache"]')?.closest(".rtvrx-card")?.scrollIntoView({ block: "center" })`);
@@ -414,7 +442,15 @@ try {
   await wait(900);
   await capture(cdp, "article.png");
   await evaluate(cdp, `(() => { const content = document.querySelector(".rtvrx-article-content"); window.scrollTo(0, Math.max(0, (content ? content.getBoundingClientRect().top + window.scrollY : 1400) - 130)); })()`);
-  await wait(500);
+  const articleBackToTop = await waitFor(async () => {
+    const state = await evaluate(cdp, `(() => ({
+      scrollY: window.scrollY,
+      visible: document.querySelector(".rtvrx-back-to-top")?.classList.contains("is-visible") || false,
+      readingToolsTopButtons: document.querySelectorAll(".rtvrx-article-tools [data-action='top']").length,
+    }))()`);
+    return state.scrollY > 520 && state.visible && state.readingToolsTopButtons === 0 ? state : null;
+  }, { timeout: 5000, label: "floating article To the top control" });
+  await wait(350);
   await capture(cdp, "article-reading.png");
 
   await evaluate(cdp, `document.querySelector(".rtvrx-comments").scrollIntoView({ block: "start" })`);
@@ -473,11 +509,12 @@ try {
       cachedImageCards: document.querySelectorAll('.rtvrx-card-media[data-image-state="cache"]').length,
       exploreTriggerVisible: Boolean(document.querySelector("[data-action='explore']")?.getBoundingClientRect().width),
       exploreLinks: document.querySelectorAll(".rtvrx-explore-grid .rtvrx-explore-link").length,
+      backToTopHidden: document.querySelector(".rtvrx-back-to-top")?.getAttribute("aria-hidden") === "true" && !document.querySelector(".rtvrx-back-to-top")?.classList.contains("is-visible"),
       horizontalOverflow: document.documentElement.scrollWidth > window.innerWidth + 2,
       logoLoaded: Boolean(document.querySelector(".rtvrx-brand-image")?.complete && document.querySelector(".rtvrx-brand-image")?.naturalWidth),
       flashAudit: window.__rtvrFlashAudit || null
     }))()`);
-    if (state.active && state.cards >= 5 && state.unresolvedImageCards === 0 && state.exploreTriggerVisible && state.exploreLinks === 11 && !state.horizontalOverflow && state.logoLoaded) {
+    if (state.active && state.cards >= 5 && state.unresolvedImageCards === 0 && state.exploreTriggerVisible && state.exploreLinks === 11 && state.backToTopHidden && !state.horizontalOverflow && state.logoLoaded) {
       if (state.flashAudit?.oldSiteVisible) throw new Error(`Legacy mobile site became visible: ${JSON.stringify(state.flashAudit)}`);
       if (!state.flashAudit?.bootLayerSeen) throw new Error(`Mobile preload layer was not observed: ${JSON.stringify(state.flashAudit)}`);
       return state;
@@ -486,6 +523,32 @@ try {
   }, { timeout: 35000, label: "responsive mobile home page" });
   await wait(900);
   await capture(cdp, "mobile-home.png");
+
+  await evaluate(cdp, `window.scrollTo(0, 1100)`);
+  const mobileBackToTop = await waitFor(async () => {
+    const state = await evaluate(cdp, `(() => {
+      const button = document.querySelector(".rtvrx-back-to-top");
+      const rect = button?.getBoundingClientRect();
+      return {
+        scrollY: window.scrollY,
+        visible: button?.classList.contains("is-visible") || false,
+        ariaHidden: button?.getAttribute("aria-hidden") || "",
+        tabIndex: button?.tabIndex,
+        insideViewport: Boolean(rect && rect.left >= -1 && rect.right <= window.innerWidth + 1 && rect.top >= -1 && rect.bottom <= window.innerHeight + 1),
+        horizontalOverflow: document.documentElement.scrollWidth > window.innerWidth + 2,
+      };
+    })()`);
+    return state.scrollY > 520 && state.visible && state.ariaHidden === "false" && state.tabIndex === 0 && state.insideViewport && !state.horizontalOverflow ? state : null;
+  }, { timeout: 7000, label: "mobile floating To the top control" });
+  await capture(cdp, "mobile-back-to-top.png");
+  await evaluate(cdp, `document.querySelector(".rtvrx-back-to-top").click()`);
+  const mobileReturnToTop = await waitFor(async () => {
+    const state = await evaluate(cdp, `(() => ({
+      scrollY: window.scrollY,
+      visible: document.querySelector(".rtvrx-back-to-top")?.classList.contains("is-visible") || false,
+    }))()`);
+    return state.scrollY <= 2 && !state.visible ? state : null;
+  }, { timeout: 7000, label: "mobile return to page top" });
 
   await evaluate(cdp, `document.querySelector("[data-action='explore']").click()`);
   const mobileExplore = await waitFor(async () => {
@@ -568,11 +631,16 @@ try {
     desktopExplore,
     desktopExploreClosed,
     categoryNavigation,
+    desktopBackToTop,
+    desktopReturnToTop,
     restoredArtwork,
     article,
+    articleBackToTop,
     discussion,
     articleToHome,
     mobile,
+    mobileBackToTop,
+    mobileReturnToTop,
     mobileExplore,
     mobileArticle,
     popup,

@@ -16,6 +16,7 @@ The visual system takes inspiration from the confident hierarchy and energetic p
 
 - Rebuilds the home page into a lead-story hero, editorial story grid, latest-news stream, and feature rail.
 - Reimagines the top bar with quick links to major platforms and an animated Explore menu containing every Road to VR section.
+- Reveals a floating “To the top” control after scrolling, with accessible keyboard and reduced-motion behavior.
 - Restores featured artwork for source blocks that Road to VR intentionally publishes as text-only cards.
 - Hides the legacy page before first paint, replacing it with a brief branded transition surface instead of a flash of the old design.
 - Uses the supplied modern Road to VR identity throughout the site, popup, preload screen, and toolbar icon.

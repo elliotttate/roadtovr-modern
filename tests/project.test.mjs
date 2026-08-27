@@ -52,6 +52,10 @@ test("content implementation has safe fallback and accessibility hooks", () => {
   assert.match(source, /jetpack_featured_media_url/);
   assert.match(source, /IMAGE_CACHE_KEY/);
   assert.match(source, /data.*imageState|imageState/);
+  assert.match(source, /function makeBackToTop\(\)/);
+  assert.match(source, /className: "rtvrx-back-to-top"/);
+  assert.match(source, /backToTop\.tabIndex = isVisible \? 0 : -1/);
+  assert.match(source, /prefers-reduced-motion: reduce/);
   assert.match(source, /classList\.remove\(BOOTING_CLASS, DISABLED_CLASS, PASSTHROUGH_CLASS\)/);
   assert.match(source, /prefers-reduced-motion|IntersectionObserver/);
   assert.match(source, /aria-label/);
@@ -116,4 +120,6 @@ test("styles cover responsive, theme, and reduced-motion modes", () => {
   assert.match(styles, /text-rendering: optimizeLegibility/);
   assert.match(styles, /font-family: inherit !important/);
   assert.match(styles, /font-size: 1em !important/);
+  assert.match(styles, /\.rtvrx-back-to-top\.is-visible/);
+  assert.match(styles, /env\(safe-area-inset-bottom\)/);
 });
