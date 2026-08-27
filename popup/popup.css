@@ -84,6 +84,12 @@ select {
   border-radius: 8px;
 }
 
+select:disabled,
+input:disabled {
+  opacity: .55;
+  cursor: wait;
+}
+
 .range-field > div { display: flex; justify-content: space-between; }
 output { color: #c4b5fd; font-size: 11px; }
 input[type="range"] { width: 100%; margin: 11px 0 0; accent-color: #8b5cf6; }

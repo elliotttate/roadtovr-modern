@@ -746,9 +746,15 @@
     await updateSavedButtons();
   }
 
+  function resolvedTheme() {
+    if (settings.theme === "light" || settings.theme === "dark") return settings.theme;
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  }
+
   function cycleTheme() {
-    const order = ["system", "light", "dark"];
-    const next = order[(order.indexOf(settings.theme) + 1) % order.length];
+    const next = resolvedTheme() === "dark" ? "light" : "dark";
+    settings.theme = next;
+    applySettings();
     chrome.storage.sync.set({ theme: next });
   }
 
@@ -822,8 +828,12 @@
     app.dataset.theme = settings.theme;
     app.style.setProperty("--rtvrx-font-scale", String(settings.fontScale));
     app.style.setProperty("--rtvrx-reading-width", `${settings.readingWidth}px`);
-    const themeLabel = settings.theme === "system" ? "system theme" : `${settings.theme} theme`;
-    $(".rtvrx-theme-button", app)?.setAttribute("title", `Using ${themeLabel}`);
+    const currentTheme = resolvedTheme();
+    const nextTheme = currentTheme === "dark" ? "light" : "dark";
+    const themeButton = $(".rtvrx-theme-button", app);
+    themeButton?.setAttribute("title", `Switch to ${nextTheme} theme`);
+    themeButton?.setAttribute("aria-label", `Switch to ${nextTheme} theme`);
+    if (themeButton) themeButton.dataset.resolvedTheme = currentTheme;
   }
 
   function observeReveals() {

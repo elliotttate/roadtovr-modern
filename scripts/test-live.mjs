@@ -276,6 +276,34 @@ try {
   await wait(900);
   await capture(cdp, "home.png");
 
+  const themeBefore = await evaluate(cdp, `(() => ({
+    setting: document.querySelector("#rtvrx-app")?.dataset.theme || "",
+    resolved: document.querySelector(".rtvrx-theme-button")?.dataset.resolvedTheme || "",
+    background: getComputedStyle(document.querySelector("#rtvrx-app")).backgroundColor,
+  }))()`);
+  const expectedFirstTheme = themeBefore.resolved === "dark" ? "light" : "dark";
+  await evaluate(cdp, `document.querySelector(".rtvrx-theme-button").click()`);
+  const themeFirstClick = await waitFor(async () => {
+    const state = await evaluate(cdp, `(() => ({
+      setting: document.querySelector("#rtvrx-app")?.dataset.theme || "",
+      resolved: document.querySelector(".rtvrx-theme-button")?.dataset.resolvedTheme || "",
+      title: document.querySelector(".rtvrx-theme-button")?.title || "",
+      background: getComputedStyle(document.querySelector("#rtvrx-app")).backgroundColor,
+    }))()`);
+    return state.setting === expectedFirstTheme && state.resolved === expectedFirstTheme && state.background !== themeBefore.background ? state : null;
+  }, { timeout: 5000, label: "first-click visual theme switch" });
+  if (themeFirstClick.resolved === "light") await capture(cdp, "home-light-theme.png");
+
+  await evaluate(cdp, `document.querySelector(".rtvrx-theme-button").click()`);
+  const themeRestored = await waitFor(async () => {
+    const state = await evaluate(cdp, `(() => ({
+      setting: document.querySelector("#rtvrx-app")?.dataset.theme || "",
+      resolved: document.querySelector(".rtvrx-theme-button")?.dataset.resolvedTheme || "",
+      background: getComputedStyle(document.querySelector("#rtvrx-app")).backgroundColor,
+    }))()`);
+    return state.resolved === themeBefore.resolved && state.background === themeBefore.background ? state : null;
+  }, { timeout: 5000, label: "theme restoration after toggle test" });
+
   await evaluate(cdp, `document.querySelector("[data-action='explore']").click()`);
   const desktopExplore = await waitFor(async () => {
     const state = await evaluate(cdp, `(() => {
@@ -614,12 +642,27 @@ try {
   const popup = await waitFor(async () => {
     const state = await evaluate(cdp, `(() => ({
       title: document.title,
+      ready: document.documentElement.dataset.ready === "true",
       logoLoaded: Boolean(document.querySelector(".brand img")?.complete && document.querySelector(".brand img")?.naturalWidth),
       controls: document.querySelectorAll("input, select, button").length,
+      disabledSettings: document.querySelectorAll("#enabled:disabled, #theme:disabled, #fontScale:disabled, #readingWidth:disabled").length,
+      theme: document.querySelector("#theme")?.value || "",
       enabled: document.querySelector("#enabled")?.checked
     }))()`);
-    return state.title && state.logoLoaded && state.controls >= 5 ? state : null;
+    return state.title && state.ready && state.logoLoaded && state.controls >= 5 && state.disabledSettings === 0 ? state : null;
   }, { timeout: 15000, label: "extension popup with new brand" });
+  await evaluate(cdp, `(() => {
+    const theme = document.querySelector("#theme");
+    theme.value = "light";
+    theme.dispatchEvent(new Event("change", { bubbles: true }));
+  })()`);
+  const popupThemeFirstChange = await waitFor(async () => {
+    const state = await evaluate(cdp, `(async () => ({
+      selected: document.querySelector("#theme")?.value || "",
+      stored: (await chrome.storage.sync.get({ theme: "system" })).theme,
+    }))()`);
+    return state.selected === "light" && state.stored === "light" ? state : null;
+  }, { timeout: 5000, label: "popup first-change theme persistence" });
   await wait(400);
   await capture(cdp, "popup.png");
 
@@ -628,6 +671,9 @@ try {
     extension: "Road to VR — Horizon",
     testedAt: new Date().toISOString(),
     home,
+    themeBefore,
+    themeFirstClick,
+    themeRestored,
     desktopExplore,
     desktopExploreClosed,
     categoryNavigation,
@@ -644,6 +690,7 @@ try {
     mobileExplore,
     mobileArticle,
     popup,
+    popupThemeFirstChange,
   };
   writeFileSync(path.join(artifactDirectory, "live-test.json"), `${JSON.stringify(report, null, 2)}\n`);
   console.log(JSON.stringify(report, null, 2));

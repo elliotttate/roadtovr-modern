@@ -1,6 +1,6 @@
 # Road to VR — Horizon
 
-A private, independent Chrome extension that transforms [Road to VR](https://roadtovr.com/) into a bold, modern editorial experience while preserving the publication's reporting, links, images, and comments.
+An independent Chrome extension that transforms [Road to VR](https://roadtovr.com/) into a bold, modern editorial experience while preserving the publication's reporting, links, images, and comments.
 
 The visual system takes inspiration from the confident hierarchy and energetic pacing of modern culture publications such as Polygon, but uses an original design: warm paper and ink colors, electric-violet accents, cinematic imagery, asymmetric story grids, and subtle motion.
 
@@ -29,15 +29,25 @@ The visual system takes inspiration from the confident hierarchy and energetic p
 - Respects `prefers-reduced-motion` and uses semantic, keyboard-friendly controls.
 - Runs only on Road to VR and does not send analytics or personal data anywhere.
 
-## Install locally
+## Install the extension
 
-1. Open `chrome://extensions` in Chrome.
-2. Enable **Developer mode**.
-3. Choose **Load unpacked**.
-4. Select this repository folder.
-5. Visit or refresh [roadtovr.com](https://roadtovr.com/).
+1. Open the [latest GitHub release](https://github.com/elliotttate/roadtovr-modern/releases/latest).
+2. Download `roadtovr-horizon.zip` from **Assets**.
+3. Unzip it into a permanent folder. Chrome needs that folder to remain in place.
+4. Open `chrome://extensions` in Chrome.
+5. Enable **Developer mode** in the upper-right corner.
+6. Choose **Load unpacked** and select the unzipped folder containing `manifest.json`.
+7. Visit or refresh [roadtovr.com](https://roadtovr.com/).
 
 Use the toolbar icon to disable the redesign, choose a theme, tune the reading width, or adjust text size. Changes are applied immediately.
+
+To update, download the newest release, replace the old extension folder with the newly unzipped one, then click **Reload** on the extension's card at `chrome://extensions`.
+
+> This project is not distributed through the Chrome Web Store, so Chrome installs it as an unpacked extension.
+
+## Install from source
+
+Clone the repository or download its source archive, then use **Load unpacked** at `chrome://extensions` and select the repository folder.
 
 ## Development
 

@@ -56,6 +56,9 @@ test("content implementation has safe fallback and accessibility hooks", () => {
   assert.match(source, /className: "rtvrx-back-to-top"/);
   assert.match(source, /backToTop\.tabIndex = isVisible \? 0 : -1/);
   assert.match(source, /prefers-reduced-motion: reduce/);
+  assert.match(source, /function resolvedTheme\(\)/);
+  assert.match(source, /const next = resolvedTheme\(\) === "dark" \? "light" : "dark"/);
+  assert.match(source, /settings\.theme = next/);
   assert.match(source, /classList\.remove\(BOOTING_CLASS, DISABLED_CLASS, PASSTHROUGH_CLASS\)/);
   assert.match(source, /prefers-reduced-motion|IntersectionObserver/);
   assert.match(source, /aria-label/);
@@ -106,6 +109,16 @@ test("new Road to VR identity is wired into every extension surface", () => {
   assert.match(content, /className: "rtvrx-brand-image"/);
   assert.match(popup, /assets\/brand\/road-to-vr-logo\.png/);
   assert.ok(manifest.web_accessible_resources[0].resources.includes("assets/brand/road-to-vr-logo.png"));
+});
+
+test("theme controls apply the first requested visual change", () => {
+  const content = read("src/content.js");
+  const popup = read("popup/popup.js");
+  assert.doesNotMatch(content, /const order = \["system", "light", "dark"\]/);
+  assert.match(content, /Switch to \$\{nextTheme\} theme/);
+  assert.match(popup, /elements\[key\]\.disabled = true/);
+  assert.match(popup, /key === "fontScale" \|\| key === "readingWidth" \? "input" : "change"/);
+  assert.match(popup, /document\.documentElement\.dataset\.ready = "true"/);
 });
 
 test("styles cover responsive, theme, and reduced-motion modes", () => {
