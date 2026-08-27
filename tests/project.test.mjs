@@ -149,6 +149,7 @@ test("Chrome Web Store submission assets and privacy disclosure are complete", (
   assert.match(privacy, /Chrome Web Store User Data Policy/);
   assert.match(privacy, /does not sell, rent, share, or transfer user data/);
   assert.match(submission, /Single purpose/);
+  assert.deepEqual(pngDimensions("store-assets/store-icon-128x128.png"), [128, 128]);
   assert.deepEqual(pngDimensions("store-assets/promo-small-440x280.png"), [440, 280]);
   assert.deepEqual(pngDimensions("store-assets/promo-marquee-1400x560.png"), [1400, 560]);
 

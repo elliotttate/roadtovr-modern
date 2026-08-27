@@ -98,7 +98,8 @@ No test credentials are required.
 
 ## Required graphics
 
-- Extension icon: `assets/icons/icon-128.png` (128×128 PNG, included in the ZIP)
+- Store icon upload: `store-assets/store-icon-128x128.png` (128×128 PNG)
+- Packaged extension icon: `assets/icons/icon-128.png` (the identical icon included in the ZIP)
 - Small promotional image: `store-assets/promo-small-440x280.png`
 - Marquee promotional image: `store-assets/promo-marquee-1400x560.png`
 - Screenshots: every PNG in `store-assets/screenshots/` (1280×800)
