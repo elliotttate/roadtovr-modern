@@ -59,6 +59,32 @@ test("content implementation has safe fallback and accessibility hooks", () => {
   assert.doesNotMatch(source, /https?:\/\/[^"']+\.js/);
 });
 
+test("header navigation exposes the complete Road to VR section taxonomy", () => {
+  const source = read("src/content.js");
+  const sectionPaths = [
+    "/sections/xr-headset-review-accessories/",
+    "/sections/xr-game-review-preview-software/",
+    "/sections/meta-quest-3-news-reviews/",
+    "/sections/pc-vr-news-reviews/",
+    "/sections/playstation-vr-psvr-2-news-reviews/",
+    "/sections/apple-vision-pro-news-reviews/",
+    "/sections/android-xr-galaxy-xr-news-reviews/",
+    "/sections/ar-mr-xr-vr-industry-news/",
+    "/sections/ar-vr-mr-xr-design-development/",
+    "/sections/guest-article/",
+    "/sections/xr-vr-ar-sale-deal/",
+  ];
+
+  for (const sectionPath of sectionPaths) {
+    assert.ok(source.includes(sectionPath), `Missing navigation destination ${sectionPath}`);
+  }
+  assert.match(source, /id: "rtvrx-explore-menu"/);
+  assert.match(source, /"aria-controls": "rtvrx-explore-menu"/);
+  assert.match(source, /"aria-expanded": "false"/);
+  assert.match(source, /function handleAppKeydown\(event\)/);
+  assert.match(source, /event\.key !== "Escape"/);
+});
+
 test("preload layer prevents the legacy page from painting", () => {
   const preload = read("src/preload.css");
   const bootstrap = read("src/bootstrap.js");

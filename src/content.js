@@ -15,15 +15,52 @@
     readingWidth: 720,
   };
 
-  const NAV_ITEMS = [
-    ["Headsets", "/sections/xr-headset-review-accessories/"],
-    ["Games", "/sections/xr-game-review-preview-software/"],
-    ["Meta Quest", "/sections/meta-quest-3-news-reviews/"],
-    ["PC VR", "/sections/pc-vr-news-reviews/"],
-    ["PSVR 2", "/sections/playstation-vr-psvr-2-news-reviews/"],
-    ["Android XR", "/sections/android-xr-galaxy-xr-news-reviews/"],
-    ["XR Industry", "/sections/ar-mr-xr-vr-industry-news/"],
-    ["Design", "/sections/ar-vr-mr-xr-design-development/"],
+  const NAV_GROUPS = [
+    {
+      label: "Reviews",
+      marker: "01 / Verdicts",
+      items: [
+        {
+          label: "Headsets & Accessories",
+          href: "/sections/xr-headset-review-accessories/",
+          description: "Hands-on hardware reviews",
+        },
+        {
+          label: "Games & Software",
+          href: "/sections/xr-game-review-preview-software/",
+          description: "Reviews, previews, and recommendations",
+        },
+      ],
+    },
+    {
+      label: "Platforms",
+      marker: "02 / Ecosystems",
+      items: [
+        { label: "Meta Quest", href: "/sections/meta-quest-3-news-reviews/" },
+        { label: "PC VR & SteamVR", href: "/sections/pc-vr-news-reviews/" },
+        { label: "PSVR 2", href: "/sections/playstation-vr-psvr-2-news-reviews/" },
+        { label: "Apple Vision Pro", href: "/sections/apple-vision-pro-news-reviews/" },
+        { label: "Android XR & Galaxy XR", href: "/sections/android-xr-galaxy-xr-news-reviews/" },
+      ],
+    },
+    {
+      label: "The bigger picture",
+      marker: "03 / Ideas",
+      items: [
+        { label: "XR Industry", href: "/sections/ar-mr-xr-vr-industry-news/" },
+        { label: "XR Design & Development", href: "/sections/ar-vr-mr-xr-design-development/" },
+        { label: "Guest Articles", href: "/sections/guest-article/" },
+        { label: "Deals", href: "/sections/xr-vr-ar-sale-deal/" },
+      ],
+    },
+  ];
+
+  const PRIMARY_NAV = [
+    { label: "Meta Quest", href: "/sections/meta-quest-3-news-reviews/" },
+    { label: "PC VR", href: "/sections/pc-vr-news-reviews/" },
+    { label: "PSVR 2", href: "/sections/playstation-vr-psvr-2-news-reviews/" },
+    { label: "Vision Pro", href: "/sections/apple-vision-pro-news-reviews/" },
+    { label: "Android XR", href: "/sections/android-xr-galaxy-xr-news-reviews/" },
   ];
 
   let settings = { ...DEFAULTS };
@@ -146,19 +183,117 @@
     ], "Road to VR home");
   }
 
+  function isCurrentDestination(href) {
+    try {
+      const destination = new URL(href, location.origin);
+      return destination.pathname.replace(/\/$/, "") === location.pathname.replace(/\/$/, "");
+    } catch {
+      return false;
+    }
+  }
+
+  function makeNavigationLink(item, className = "") {
+    const link = makeLink(className, item.href, item.label);
+    if (isCurrentDestination(item.href)) {
+      link.classList.add("is-current");
+      link.setAttribute("aria-current", "page");
+    }
+    return link;
+  }
+
+  function makeExploreGroup(group) {
+    return create("section", { className: "rtvrx-explore-group" }, [
+      create("div", { className: "rtvrx-explore-group-heading" }, [
+        create("span", { text: group.marker }),
+        create("h3", { text: group.label }),
+      ]),
+      create("ul", {}, group.items.map((item) => create("li", {}, [
+        makeNavigationLink(item, "rtvrx-explore-link"),
+        item.description ? create("small", { text: item.description }) : null,
+      ]))),
+    ]);
+  }
+
+  function makeExploreMenu() {
+    const utilities = [
+      { label: "Newsletter", href: "/vr-newsletter-daily-roundup/" },
+      { label: "About", href: "/about-road-to-vr-contact-tip/" },
+      { label: "Advertise", href: "/advertise-xr-vr-ar" },
+      { label: "RSS", href: "/feed/" },
+    ];
+
+    return create("div", {
+      id: "rtvrx-explore-menu",
+      className: "rtvrx-explore",
+      "aria-hidden": "true",
+    }, [
+      create("button", {
+        className: "rtvrx-explore-backdrop",
+        type: "button",
+        tabindex: "-1",
+        "data-action": "explore-close",
+        "aria-label": "Close all sections menu",
+      }),
+      create("div", {
+        className: "rtvrx-explore-panel",
+        role: "dialog",
+        "aria-modal": "false",
+        "aria-labelledby": "rtvrx-explore-title",
+      }, [
+        create("div", { className: "rtvrx-explore-shell rtvrx-shell" }, [
+          create("div", { className: "rtvrx-explore-heading" }, [
+            create("div", {}, [
+              create("span", { text: "The whole horizon" }),
+              create("h2", { id: "rtvrx-explore-title", text: "Explore Road to VR" }),
+              create("p", { text: "Every platform, review, and idea shaping the immersive frontier." }),
+            ]),
+            create("button", {
+              className: "rtvrx-explore-close",
+              type: "button",
+              "data-action": "explore-close",
+              "aria-label": "Close all sections menu",
+              text: "×",
+            }),
+          ]),
+          create("nav", { className: "rtvrx-explore-grid", "aria-label": "All Road to VR sections" },
+            NAV_GROUPS.map(makeExploreGroup)
+          ),
+          create("div", { className: "rtvrx-explore-utilities" }, [
+            create("span", { text: "More from Road to VR" }),
+            create("div", {}, utilities.map((item) => makeNavigationLink(item))),
+          ]),
+        ]),
+      ]),
+    ]);
+  }
+
   function makeHeader(isArticle = false) {
     const header = create("header", { className: "rtvrx-header" });
     const top = create("div", { className: "rtvrx-header-inner rtvrx-shell" }, [
       makeBrand(),
       create("nav", { className: "rtvrx-nav", "aria-label": "Primary" },
-        NAV_ITEMS.slice(0, 5).map(([label, href]) => makeLink("", href, label))
+        PRIMARY_NAV.map((item) => makeNavigationLink(item))
       ),
       create("div", { className: "rtvrx-header-tools" }, [
+        create("button", {
+          className: "rtvrx-explore-button",
+          type: "button",
+          "data-action": "explore",
+          "aria-label": "Explore all Road to VR sections",
+          "aria-controls": "rtvrx-explore-menu",
+          "aria-expanded": "false",
+        }, [
+          create("span", { className: "rtvrx-menu-glyph", "aria-hidden": "true" }, [
+            create("i"), create("i"), create("i"), create("i"),
+          ]),
+          create("span", { text: "Explore" }),
+        ]),
         create("button", {
           className: "rtvrx-icon-button",
           type: "button",
           "data-action": "search",
           "aria-label": "Search Road to VR",
+          "aria-expanded": "false",
           text: "⌕",
         }),
         create("button", {
@@ -170,10 +305,6 @@
         }),
       ]),
     ]);
-
-    const subnav = create("nav", { className: "rtvrx-subnav rtvrx-shell", "aria-label": "Explore sections" },
-      NAV_ITEMS.map(([label, href]) => makeLink("", href, label))
-    );
 
     const search = create("form", { className: "rtvrx-search", role: "search" }, [
       create("label", { for: "rtvrx-search-input", text: "Search stories" }),
@@ -199,7 +330,7 @@
       if (query) location.href = `https://roadtovr.com/?s=${encodeURIComponent(query)}`;
     });
 
-    header.append(top, subnav, search);
+    header.append(top, search, makeExploreMenu());
     if (isArticle) {
       header.append(create("div", { className: "rtvrx-progress", "aria-hidden": "true" }, [create("i") ]));
     }
@@ -608,6 +739,27 @@
     chrome.storage.sync.set({ theme: next });
   }
 
+  function setExploreOpen(open, restoreFocus = false) {
+    const menu = $(".rtvrx-explore", app);
+    const trigger = $("[data-action='explore']", app);
+    if (!menu || !trigger) return;
+    menu.classList.toggle("is-open", open);
+    menu.setAttribute("aria-hidden", String(!open));
+    trigger.setAttribute("aria-expanded", String(open));
+    app.classList.toggle("rtvrx-explore-open", open);
+    if (restoreFocus) trigger.focus();
+  }
+
+  function setSearchOpen(open, restoreFocus = false) {
+    const form = $(".rtvrx-search", app);
+    const trigger = $("[data-action='search']", app);
+    if (!form || !trigger) return;
+    form.classList.toggle("is-open", open);
+    trigger.setAttribute("aria-expanded", String(open));
+    if (open) $("input", form)?.focus();
+    else if (restoreFocus) trigger.focus();
+  }
+
   function handleAction(event) {
     const button = event.target.closest("[data-action]");
     if (!button) return;
@@ -615,12 +767,20 @@
 
     if (action === "theme") cycleTheme();
     if (action === "save") toggleSaved(button);
+    if (action === "explore" || action === "explore-close") {
+      const menu = $(".rtvrx-explore", app);
+      const willOpen = action === "explore" && !menu.classList.contains("is-open");
+      if (willOpen) setSearchOpen(false);
+      setExploreOpen(willOpen, action === "explore-close");
+      if (willOpen && event.detail === 0) {
+        requestAnimationFrame(() => $(".rtvrx-explore-link", menu)?.focus());
+      }
+    }
     if (action === "search" || action === "search-close") {
       const form = $(".rtvrx-search", app);
       const willOpen = action === "search" && !form.classList.contains("is-open");
-      form.classList.toggle("is-open", willOpen);
-      button.setAttribute("aria-expanded", String(willOpen));
-      if (willOpen) $("input", form).focus();
+      if (willOpen) setExploreOpen(false);
+      setSearchOpen(willOpen, action === "search-close");
     }
     if (action === "font-down" || action === "font-up") {
       const delta = action === "font-up" ? 0.05 : -0.05;
@@ -628,6 +788,17 @@
       chrome.storage.sync.set({ fontScale });
     }
     if (action === "top") window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function handleAppKeydown(event) {
+    if (event.key !== "Escape") return;
+    if ($(".rtvrx-explore.is-open", app)) {
+      event.preventDefault();
+      setExploreOpen(false, true);
+    } else if ($(".rtvrx-search.is-open", app)) {
+      event.preventDefault();
+      setSearchOpen(false, true);
+    }
   }
 
   function applySettings() {
@@ -728,6 +899,7 @@
     const discussion = isArticle ? preserveDiscussion() : null;
     app = create("div", { id: APP_ID });
     app.addEventListener("click", handleAction);
+    app.addEventListener("keydown", handleAppKeydown);
     app.append(makeHeader(isArticle));
     app.append(isArticle ? makeArticle(data, posts, discussion) : buildHome(posts));
     app.append(makeFooter());

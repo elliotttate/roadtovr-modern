@@ -16,6 +16,19 @@ const projectDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url
 const artifactDirectory = path.join(projectDirectory, "artifacts");
 const userDataDirectory = mkdtempSync(path.join(os.tmpdir(), "rtvr-horizon-"));
 const devToolsFile = path.join(userDataDirectory, "DevToolsActivePort");
+const expectedSectionPaths = [
+  "/sections/xr-headset-review-accessories/",
+  "/sections/xr-game-review-preview-software/",
+  "/sections/meta-quest-3-news-reviews/",
+  "/sections/pc-vr-news-reviews/",
+  "/sections/playstation-vr-psvr-2-news-reviews/",
+  "/sections/apple-vision-pro-news-reviews/",
+  "/sections/android-xr-galaxy-xr-news-reviews/",
+  "/sections/ar-mr-xr-vr-industry-news/",
+  "/sections/ar-vr-mr-xr-design-development/",
+  "/sections/guest-article/",
+  "/sections/xr-vr-ar-sale-deal/",
+];
 
 function findChrome() {
   const candidates = [process.env.RTVR_CHROME].filter(Boolean);
@@ -245,10 +258,13 @@ try {
       cachedImageCards: document.querySelectorAll('.rtvrx-card-media[data-image-state="cache"]').length,
       title: document.querySelector(".rtvrx-home-intro h1")?.textContent || "",
       firstArticle: document.querySelector(".rtvrx-card h2 a")?.href || "",
+      primaryNavLinks: document.querySelectorAll(".rtvrx-nav a").length,
+      exploreLinks: document.querySelectorAll(".rtvrx-explore-grid .rtvrx-explore-link").length,
+      exploreTriggerVisible: Boolean(document.querySelector("[data-action='explore']")?.getBoundingClientRect().width),
       logoLoaded: Boolean(document.querySelector(".rtvrx-brand-image")?.complete && document.querySelector(".rtvrx-brand-image")?.naturalWidth),
       flashAudit: window.__rtvrFlashAudit || null
     }))()`);
-    if (state.active && state.app && state.cards >= 5 && state.unresolvedImageCards === 0 && state.firstArticle && state.logoLoaded) {
+    if (state.active && state.app && state.cards >= 5 && state.unresolvedImageCards === 0 && state.firstArticle && state.logoLoaded && state.primaryNavLinks === 5 && state.exploreLinks === 11 && state.exploreTriggerVisible) {
       if (state.flashAudit?.oldSiteVisible) throw new Error(`Legacy site became visible: ${JSON.stringify(state.flashAudit)}`);
       if (!state.flashAudit?.bootLayerSeen) throw new Error(`Preload layer was not observed: ${JSON.stringify(state.flashAudit)}`);
       return state;
@@ -258,14 +274,85 @@ try {
 
   await wait(900);
   await capture(cdp, "home.png");
+
+  await evaluate(cdp, `document.querySelector("[data-action='explore']").click()`);
+  const desktopExplore = await waitFor(async () => {
+    const state = await evaluate(cdp, `(() => {
+      const menu = document.querySelector(".rtvrx-explore");
+      const panel = document.querySelector(".rtvrx-explore-panel");
+      const trigger = document.querySelector("[data-action='explore']");
+      return {
+        open: menu?.classList.contains("is-open") || false,
+        ariaHidden: menu?.getAttribute("aria-hidden") || "",
+        ariaExpanded: trigger?.getAttribute("aria-expanded") || "",
+        heading: document.querySelector("#rtvrx-explore-title")?.textContent || "",
+        groups: [...document.querySelectorAll(".rtvrx-explore-group h3")].map((node) => node.textContent),
+        destinations: [...document.querySelectorAll(".rtvrx-explore-grid .rtvrx-explore-link")].map((link) => new URL(link.href).pathname),
+        panelHeight: panel?.getBoundingClientRect().height || 0,
+        horizontalOverflow: document.documentElement.scrollWidth > window.innerWidth + 2,
+      };
+    })()`);
+    const missing = expectedSectionPaths.filter((path) => !state.destinations.includes(path));
+    if (state.open && state.ariaHidden === "false" && state.ariaExpanded === "true" && state.destinations.length === 11 && state.groups.length === 3 && state.panelHeight > 300 && !state.horizontalOverflow && missing.length === 0) {
+      return { ...state, missing };
+    }
+    throw new Error(JSON.stringify({ ...state, missing }));
+  }, { timeout: 10000, label: "desktop Explore menu" });
+  await wait(450);
+  await capture(cdp, "home-explore-menu.png");
+
+  await cdp.send("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape" });
+  await cdp.send("Input.dispatchKeyEvent", { type: "keyUp", key: "Escape", code: "Escape" });
+  const desktopExploreClosed = await waitFor(async () => {
+    const state = await evaluate(cdp, `(() => ({
+      open: document.querySelector(".rtvrx-explore")?.classList.contains("is-open") || false,
+      ariaExpanded: document.querySelector("[data-action='explore']")?.getAttribute("aria-expanded") || "",
+      focusReturned: document.activeElement === document.querySelector("[data-action='explore']"),
+    }))()`);
+    return !state.open && state.ariaExpanded === "false" && state.focusReturned ? state : null;
+  }, { timeout: 5000, label: "Escape closing Explore menu" });
+
+  await evaluate(cdp, `(() => {
+    document.querySelector("[data-action='explore']").click();
+    document.querySelector('.rtvrx-explore-link[href*="meta-quest-3-news-reviews"]')?.click();
+  })()`);
+  const categoryNavigation = await waitFor(async () => {
+    const state = await evaluate(cdp, `(() => ({
+      url: location.href,
+      active: document.documentElement.classList.contains("rtvrx-active"),
+      cards: document.querySelectorAll(".rtvrx-card").length,
+      unresolvedImageCards: document.querySelectorAll('.rtvrx-card-media[data-image-state="missing"]').length,
+      currentPrimaryLink: document.querySelector(".rtvrx-nav a[aria-current='page']")?.textContent || "",
+      currentExploreLink: document.querySelector(".rtvrx-explore-link[aria-current='page']")?.textContent || "",
+      flashAudit: window.__rtvrFlashAudit || null,
+    }))()`);
+    if (state.url.includes("/sections/meta-quest-3-news-reviews/") && state.active && state.cards >= 5 && state.unresolvedImageCards === 0 && state.currentPrimaryLink === "Meta Quest" && state.currentExploreLink === "Meta Quest") {
+      if (state.flashAudit?.oldSiteVisible) throw new Error(`Legacy category page became visible: ${JSON.stringify(state.flashAudit)}`);
+      return state;
+    }
+    throw new Error(JSON.stringify(state));
+  }, { timeout: 35000, label: "modern category navigation from Explore menu" });
+  await wait(650);
+  await capture(cdp, "category-meta-quest.png");
+
+  await cdp.send("Page.navigate", { url: "https://www.roadtovr.com/" });
+  await waitFor(async () => {
+    const state = await evaluate(cdp, `(() => ({
+      active: document.documentElement.classList.contains("rtvrx-active"),
+      cards: document.querySelectorAll(".rtvrx-card").length,
+      unresolvedImageCards: document.querySelectorAll('.rtvrx-card-media[data-image-state="missing"]').length,
+    }))()`);
+    return state.active && state.cards >= 5 && state.unresolvedImageCards === 0 ? state : null;
+  }, { timeout: 35000, label: "home page after category navigation" });
+
   await evaluate(cdp, `document.querySelector(".rtvrx-latest").scrollIntoView({ block: "start" })`);
   await wait(600);
   await capture(cdp, "home-latest.png");
   let restoredArtwork = [];
   if (home.metadataImageCards) {
-    await evaluate(cdp, `document.querySelector('.rtvrx-card-media[data-image-state="metadata"]')?.closest(".rtvrx-card")?.scrollIntoView({ block: "center" })`);
+    await evaluate(cdp, `document.querySelector('.rtvrx-card-media[data-image-state="metadata"], .rtvrx-card-media[data-image-state="cache"]')?.closest(".rtvrx-card")?.scrollIntoView({ block: "center" })`);
     restoredArtwork = await evaluate(cdp, `(async () => {
-      const cards = [...document.querySelectorAll('.rtvrx-card-media[data-image-state="metadata"]')];
+      const cards = [...document.querySelectorAll('.rtvrx-card-media[data-image-state="metadata"], .rtvrx-card-media[data-image-state="cache"]')];
       return Promise.all(cards.map(async (media) => {
         const match = media.style.backgroundImage.match(/url\\(["']?(.*?)["']?\\)/i);
         const imageUrl = match?.[1] || "";
@@ -384,12 +471,13 @@ try {
       cards: document.querySelectorAll(".rtvrx-card").length,
       unresolvedImageCards: document.querySelectorAll('.rtvrx-card-media[data-image-state="missing"]').length,
       cachedImageCards: document.querySelectorAll('.rtvrx-card-media[data-image-state="cache"]').length,
-      subnavVisible: getComputedStyle(document.querySelector(".rtvrx-subnav")).display !== "none",
+      exploreTriggerVisible: Boolean(document.querySelector("[data-action='explore']")?.getBoundingClientRect().width),
+      exploreLinks: document.querySelectorAll(".rtvrx-explore-grid .rtvrx-explore-link").length,
       horizontalOverflow: document.documentElement.scrollWidth > window.innerWidth + 2,
       logoLoaded: Boolean(document.querySelector(".rtvrx-brand-image")?.complete && document.querySelector(".rtvrx-brand-image")?.naturalWidth),
       flashAudit: window.__rtvrFlashAudit || null
     }))()`);
-    if (state.active && state.cards >= 5 && state.unresolvedImageCards === 0 && state.subnavVisible && !state.horizontalOverflow && state.logoLoaded) {
+    if (state.active && state.cards >= 5 && state.unresolvedImageCards === 0 && state.exploreTriggerVisible && state.exploreLinks === 11 && !state.horizontalOverflow && state.logoLoaded) {
       if (state.flashAudit?.oldSiteVisible) throw new Error(`Legacy mobile site became visible: ${JSON.stringify(state.flashAudit)}`);
       if (!state.flashAudit?.bootLayerSeen) throw new Error(`Mobile preload layer was not observed: ${JSON.stringify(state.flashAudit)}`);
       return state;
@@ -398,6 +486,30 @@ try {
   }, { timeout: 35000, label: "responsive mobile home page" });
   await wait(900);
   await capture(cdp, "mobile-home.png");
+
+  await evaluate(cdp, `document.querySelector("[data-action='explore']").click()`);
+  const mobileExplore = await waitFor(async () => {
+    const state = await evaluate(cdp, `(() => {
+      const panel = document.querySelector(".rtvrx-explore-panel");
+      return {
+        open: document.querySelector(".rtvrx-explore")?.classList.contains("is-open") || false,
+        links: document.querySelectorAll(".rtvrx-explore-grid .rtvrx-explore-link").length,
+        panelWidth: panel?.getBoundingClientRect().width || 0,
+        panelHeight: panel?.getBoundingClientRect().height || 0,
+        panelScrollable: (panel?.scrollHeight || 0) > (panel?.clientHeight || 0),
+        viewportWidth: window.innerWidth,
+        horizontalOverflow: document.documentElement.scrollWidth > window.innerWidth + 2,
+      };
+    })()`);
+    return state.open && state.links === 11 && state.panelWidth <= state.viewportWidth && state.panelHeight > 300 && !state.horizontalOverflow ? state : null;
+  }, { timeout: 10000, label: "mobile Explore menu" });
+  await wait(450);
+  await capture(cdp, "mobile-explore-menu.png");
+  await evaluate(cdp, `document.querySelector(".rtvrx-explore-close").click()`);
+  await waitFor(async () => evaluate(cdp, `document.querySelector("[data-action='explore']").getAttribute("aria-expanded") === "false"`), {
+    timeout: 5000,
+    label: "mobile Explore menu close",
+  });
 
   await cdp.send("Page.navigate", { url: home.firstArticle });
   const mobileArticle = await waitFor(async () => {
@@ -453,11 +565,15 @@ try {
     extension: "Road to VR — Horizon",
     testedAt: new Date().toISOString(),
     home,
+    desktopExplore,
+    desktopExploreClosed,
+    categoryNavigation,
     restoredArtwork,
     article,
     discussion,
     articleToHome,
     mobile,
+    mobileExplore,
     mobileArticle,
     popup,
   };
