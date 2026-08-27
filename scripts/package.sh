@@ -9,5 +9,5 @@ mkdir -p "$dist_dir"
 rm -f "$archive"
 
 cd "$project_dir"
-zip -qr "$archive" manifest.json README.md SECURITY.md src popup assets docs -x '*.DS_Store'
+zip -qr "$archive" manifest.json README.md PRIVACY.md SECURITY.md src popup assets docs -x '*.DS_Store'
 echo "$archive"

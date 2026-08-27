@@ -8,6 +8,12 @@ const projectDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url
 const read = (relativePath) => readFileSync(path.join(projectDirectory, relativePath), "utf8");
 const manifest = JSON.parse(read("manifest.json"));
 
+function pngDimensions(relativePath) {
+  const image = readFileSync(path.join(projectDirectory, relativePath));
+  assert.equal(image.toString("ascii", 1, 4), "PNG", `${relativePath} is not a PNG`);
+  return [image.readUInt32BE(16), image.readUInt32BE(20)];
+}
+
 test("uses a narrowly scoped Manifest V3 configuration", () => {
   assert.equal(manifest.manifest_version, 3);
   assert.deepEqual(manifest.permissions, ["storage"]);
@@ -135,4 +141,25 @@ test("styles cover responsive, theme, and reduced-motion modes", () => {
   assert.match(styles, /font-size: 1em !important/);
   assert.match(styles, /\.rtvrx-back-to-top\.is-visible/);
   assert.match(styles, /env\(safe-area-inset-bottom\)/);
+});
+
+test("Chrome Web Store submission assets and privacy disclosure are complete", () => {
+  const privacy = read("PRIVACY.md");
+  const submission = read("store-assets/SUBMISSION.md");
+  assert.match(privacy, /Chrome Web Store User Data Policy/);
+  assert.match(privacy, /does not sell, rent, share, or transfer user data/);
+  assert.match(submission, /Single purpose/);
+  assert.deepEqual(pngDimensions("store-assets/promo-small-440x280.png"), [440, 280]);
+  assert.deepEqual(pngDimensions("store-assets/promo-marquee-1400x560.png"), [1400, 560]);
+
+  const screenshots = [
+    "01-home-dark-1280x800.png",
+    "02-home-light-1280x800.png",
+    "03-explore-navigation-1280x800.png",
+    "04-article-reader-1280x800.png",
+    "05-article-comments-1280x800.png",
+  ];
+  for (const screenshot of screenshots) {
+    assert.deepEqual(pngDimensions(`store-assets/screenshots/${screenshot}`), [1280, 800]);
+  }
 });
