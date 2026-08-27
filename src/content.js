@@ -6,6 +6,7 @@
   const BOOTING_CLASS = "rtvrx-booting";
   const DISABLED_CLASS = "rtvrx-disabled";
   const PASSTHROUGH_CLASS = "rtvrx-passthrough";
+  const IMAGE_CACHE_KEY = "articleImageCache";
   const BRAND_LOGO_URL = chrome.runtime.getURL("assets/brand/road-to-vr-logo.png");
   const DEFAULTS = {
     enabled: true,
@@ -215,10 +216,12 @@
   function makeStoryCard(post, variant = "standard", index = 0) {
     const card = create("article", {
       className: `rtvrx-card rtvrx-card-${variant} rtvrx-reveal`,
+      dataset: { storyUrl: post.href },
       style: { "--rtvrx-delay": `${Math.min(index * 65, 390)}ms` },
     });
 
     const media = makeLink("rtvrx-card-media", post.href, [], `Read ${post.title}`);
+    media.dataset.imageState = post.image ? "source" : "missing";
     if (post.image) media.style.backgroundImage = `url("${post.image.replaceAll('"', "%22")}")`;
     media.append(create("span", { className: "rtvrx-card-shade" }));
 
@@ -230,6 +233,77 @@
     ]);
     card.append(media, body, makeSaveButton(post));
     return card;
+  }
+
+  function slugFromUrl(value) {
+    try {
+      return new URL(value, location.href).pathname.split("/").filter(Boolean).pop() || "";
+    } catch {
+      return "";
+    }
+  }
+
+  function applyResolvedImage(post, image, imageState = "metadata") {
+    const resolved = absoluteUrl(image);
+    if (!resolved || !/^https?:$/i.test(new URL(resolved).protocol)) return false;
+
+    post.image = resolved;
+    if (!app) return true;
+    $$(".rtvrx-card", app)
+      .filter((card) => card.dataset.storyUrl === post.href)
+      .forEach((card) => {
+        const media = $(".rtvrx-card-media", card);
+        if (media) {
+          media.style.backgroundImage = `url("${resolved.replaceAll('"', "%22")}")`;
+          media.dataset.imageState = imageState;
+        }
+        const save = $(".rtvrx-save", card);
+        if (save) save.dataset.image = resolved;
+      });
+    return true;
+  }
+
+  async function hydrateMissingImages(posts) {
+    const missing = posts.filter((post) => !post.image);
+    if (!missing.length) return;
+
+    const stored = await chrome.storage.local.get({ [IMAGE_CACHE_KEY]: {} });
+    const cache = stored[IMAGE_CACHE_KEY] || {};
+    missing.forEach((post) => {
+      if (cache[post.href]) applyResolvedImage(post, cache[post.href], "cache");
+    });
+
+    const unresolved = missing.filter((post) => !post.image && slugFromUrl(post.href));
+    if (!unresolved.length) return;
+
+    const postBySlug = new Map(unresolved.map((post) => [slugFromUrl(post.href), post]));
+    const endpoint = new URL("/wp-json/wp/v2/posts", location.origin);
+    endpoint.searchParams.set("_fields", "link,jetpack_featured_media_url");
+    endpoint.searchParams.set("per_page", String(Math.min(100, unresolved.length)));
+    postBySlug.forEach((_, slug) => endpoint.searchParams.append("slug[]", slug));
+
+    const response = await fetch(endpoint, {
+      credentials: "same-origin",
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!response.ok) throw new Error(`Featured image lookup failed with ${response.status}`);
+
+    const records = await response.json();
+    let changed = false;
+    for (const record of records) {
+      const post = postBySlug.get(slugFromUrl(record.link));
+      if (!post || !record.jetpack_featured_media_url) continue;
+      if (applyResolvedImage(post, record.jetpack_featured_media_url)) {
+        cache[post.href] = post.image;
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      const trimmed = Object.fromEntries(Object.entries(cache).slice(-120));
+      await chrome.storage.local.set({ [IMAGE_CACHE_KEY]: trimmed });
+    }
   }
 
   function makeSaveButton(post) {
@@ -665,6 +739,7 @@
     observeReveals();
     monitorProgress();
     updateSavedButtons();
+    if (!isArticle) hydrateMissingImages(posts).catch(() => {});
     return true;
   }
 

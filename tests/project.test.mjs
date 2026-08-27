@@ -48,6 +48,10 @@ test("content implementation has safe fallback and accessibility hooks", () => {
   assert.match(source, /function preserveDiscussion\(\)/);
   assert.match(source, /#disqus_thread/);
   assert.match(source, /function restoreDiscussion\(\)/);
+  assert.match(source, /async function hydrateMissingImages\(posts\)/);
+  assert.match(source, /jetpack_featured_media_url/);
+  assert.match(source, /IMAGE_CACHE_KEY/);
+  assert.match(source, /data.*imageState|imageState/);
   assert.match(source, /classList\.remove\(BOOTING_CLASS, DISABLED_CLASS, PASSTHROUGH_CLASS\)/);
   assert.match(source, /prefers-reduced-motion|IntersectionObserver/);
   assert.match(source, /aria-label/);

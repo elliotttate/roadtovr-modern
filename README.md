@@ -15,6 +15,7 @@ The visual system takes inspiration from the confident hierarchy and energetic p
 ## What it changes
 
 - Rebuilds the home page into a lead-story hero, editorial story grid, latest-news stream, and feature rail.
+- Restores featured artwork for source blocks that Road to VR intentionally publishes as text-only cards.
 - Hides the legacy page before first paint, replacing it with a brief branded transition surface instead of a flash of the old design.
 - Uses the supplied modern Road to VR identity throughout the site, popup, preload screen, and toolbar icon.
 - Reflows articles into a distraction-free reader with larger editorial typography, a progress bar, estimated reading time, comfortable line length, and responsive media.

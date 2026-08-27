@@ -239,12 +239,16 @@ try {
       app: Boolean(document.querySelector("#rtvrx-app")),
       sourceModules: document.querySelectorAll(".td-module-container").length,
       cards: document.querySelectorAll(".rtvrx-card").length,
+      unresolvedImageCards: document.querySelectorAll('.rtvrx-card-media[data-image-state="missing"]').length,
+      sourceImageCards: document.querySelectorAll('.rtvrx-card-media[data-image-state="source"]').length,
+      metadataImageCards: document.querySelectorAll('.rtvrx-card-media[data-image-state="metadata"]').length,
+      cachedImageCards: document.querySelectorAll('.rtvrx-card-media[data-image-state="cache"]').length,
       title: document.querySelector(".rtvrx-home-intro h1")?.textContent || "",
       firstArticle: document.querySelector(".rtvrx-card h2 a")?.href || "",
       logoLoaded: Boolean(document.querySelector(".rtvrx-brand-image")?.complete && document.querySelector(".rtvrx-brand-image")?.naturalWidth),
       flashAudit: window.__rtvrFlashAudit || null
     }))()`);
-    if (state.active && state.app && state.cards >= 5 && state.firstArticle && state.logoLoaded) {
+    if (state.active && state.app && state.cards >= 5 && state.unresolvedImageCards === 0 && state.firstArticle && state.logoLoaded) {
       if (state.flashAudit?.oldSiteVisible) throw new Error(`Legacy site became visible: ${JSON.stringify(state.flashAudit)}`);
       if (!state.flashAudit?.bootLayerSeen) throw new Error(`Preload layer was not observed: ${JSON.stringify(state.flashAudit)}`);
       return state;
@@ -254,6 +258,45 @@ try {
 
   await wait(900);
   await capture(cdp, "home.png");
+  await evaluate(cdp, `document.querySelector(".rtvrx-latest").scrollIntoView({ block: "start" })`);
+  await wait(600);
+  await capture(cdp, "home-latest.png");
+  let restoredArtwork = [];
+  if (home.metadataImageCards) {
+    await evaluate(cdp, `document.querySelector('.rtvrx-card-media[data-image-state="metadata"]')?.closest(".rtvrx-card")?.scrollIntoView({ block: "center" })`);
+    restoredArtwork = await evaluate(cdp, `(async () => {
+      const cards = [...document.querySelectorAll('.rtvrx-card-media[data-image-state="metadata"]')];
+      return Promise.all(cards.map(async (media) => {
+        const match = media.style.backgroundImage.match(/url\\(["']?(.*?)["']?\\)/i);
+        const imageUrl = match?.[1] || "";
+        const loaded = await new Promise((resolve) => {
+          const image = new Image();
+          const timer = setTimeout(() => resolve({ loaded: false, width: 0, height: 0 }), 12000);
+          image.onload = () => {
+            clearTimeout(timer);
+            resolve({ loaded: true, width: image.naturalWidth, height: image.naturalHeight });
+          };
+          image.onerror = () => {
+            clearTimeout(timer);
+            resolve({ loaded: false, width: 0, height: 0 });
+          };
+          image.src = imageUrl;
+        });
+        return {
+          title: media.closest(".rtvrx-card")?.querySelector("h2")?.textContent || "",
+          imageUrl,
+          computedBackground: getComputedStyle(media).backgroundImage,
+          pseudoBackground: getComputedStyle(media, "::after").backgroundImage,
+          ...loaded
+        };
+      }));
+    })()`);
+    if (restoredArtwork.some((item) => !item.loaded || !item.width)) {
+      throw new Error(`Restored artwork failed to load: ${JSON.stringify(restoredArtwork)}`);
+    }
+    await wait(400);
+    await capture(cdp, "home-restored-artwork.png");
+  }
   await cdp.send("Page.navigate", { url: home.firstArticle });
   const article = await waitFor(async () => {
     const state = await evaluate(cdp, `(() => ({
@@ -311,11 +354,14 @@ try {
       active: document.documentElement.classList.contains("rtvrx-active"),
       app: Boolean(document.querySelector("#rtvrx-app")),
       cards: document.querySelectorAll(".rtvrx-card").length,
+      unresolvedImageCards: document.querySelectorAll('.rtvrx-card-media[data-image-state="missing"]').length,
+      metadataImageCards: document.querySelectorAll('.rtvrx-card-media[data-image-state="metadata"]').length,
+      cachedImageCards: document.querySelectorAll('.rtvrx-card-media[data-image-state="cache"]').length,
       title: document.querySelector(".rtvrx-home-intro h1")?.textContent || "",
       logoLoaded: Boolean(document.querySelector(".rtvrx-brand-image")?.complete && document.querySelector(".rtvrx-brand-image")?.naturalWidth),
       flashAudit: window.__rtvrFlashAudit || null
     }))()`);
-    if (state.active && state.app && state.cards >= 5 && state.title && state.logoLoaded) {
+    if (state.active && state.app && state.cards >= 5 && state.unresolvedImageCards === 0 && state.title && state.logoLoaded) {
       if (state.flashAudit?.oldSiteVisible) throw new Error(`Legacy site became visible after clicking the article logo: ${JSON.stringify(state.flashAudit)}`);
       if (!state.flashAudit?.bootLayerSeen) throw new Error(`Preload layer was not observed after clicking the article logo: ${JSON.stringify(state.flashAudit)}`);
       return state;
@@ -336,12 +382,14 @@ try {
     const state = await evaluate(cdp, `(() => ({
       active: document.documentElement.classList.contains("rtvrx-active"),
       cards: document.querySelectorAll(".rtvrx-card").length,
+      unresolvedImageCards: document.querySelectorAll('.rtvrx-card-media[data-image-state="missing"]').length,
+      cachedImageCards: document.querySelectorAll('.rtvrx-card-media[data-image-state="cache"]').length,
       subnavVisible: getComputedStyle(document.querySelector(".rtvrx-subnav")).display !== "none",
       horizontalOverflow: document.documentElement.scrollWidth > window.innerWidth + 2,
       logoLoaded: Boolean(document.querySelector(".rtvrx-brand-image")?.complete && document.querySelector(".rtvrx-brand-image")?.naturalWidth),
       flashAudit: window.__rtvrFlashAudit || null
     }))()`);
-    if (state.active && state.cards >= 5 && state.subnavVisible && !state.horizontalOverflow && state.logoLoaded) {
+    if (state.active && state.cards >= 5 && state.unresolvedImageCards === 0 && state.subnavVisible && !state.horizontalOverflow && state.logoLoaded) {
       if (state.flashAudit?.oldSiteVisible) throw new Error(`Legacy mobile site became visible: ${JSON.stringify(state.flashAudit)}`);
       if (!state.flashAudit?.bootLayerSeen) throw new Error(`Mobile preload layer was not observed: ${JSON.stringify(state.flashAudit)}`);
       return state;
@@ -405,6 +453,7 @@ try {
     extension: "Road to VR — Horizon",
     testedAt: new Date().toISOString(),
     home,
+    restoredArtwork,
     article,
     discussion,
     articleToHome,
@@ -419,7 +468,12 @@ try {
   throw new Error(`${error.message}${tail ? `\nChrome log:\n${tail}` : ""}`);
 } finally {
   cdp?.close();
-  chromeProcess.kill("SIGTERM");
-  await wait(250);
-  rmSync(userDataDirectory, { recursive: true, force: true });
+  if (chromeProcess.exitCode === null) {
+    chromeProcess.kill("SIGTERM");
+    await Promise.race([
+      new Promise((resolve) => chromeProcess.once("exit", resolve)),
+      wait(2500),
+    ]);
+  }
+  rmSync(userDataDirectory, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
 }
